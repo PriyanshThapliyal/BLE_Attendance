@@ -107,7 +107,7 @@ fun LibraryScreen(
             viewModel = viewModel,
             initial = null,
             onDismiss = { showAddBookDialog = false },
-            onConfirm = { title, author, isbn, category, totalCopies, _, shelf, edition, overview ->
+            onConfirm = { title, author, isbn, category, totalCopies, _, shelf, edition, overview, tableOfContents ->
                 viewModel.addBook(
                     title = title,
                     author = author,
@@ -116,7 +116,8 @@ fun LibraryScreen(
                     copies = totalCopies,
                     shelfLocation = shelf,
                     edition = edition,
-                    overview = overview
+                    overview = overview,
+                    tableOfContents = tableOfContents
                 )
                 showAddBookDialog = false
             }
@@ -127,7 +128,7 @@ fun LibraryScreen(
             viewModel = viewModel,
             initial = target,
             onDismiss = { editingBook = null },
-            onConfirm = { title, author, isbn, category, totalCopies, availableCopies, shelf, edition, overview ->
+            onConfirm = { title, author, isbn, category, totalCopies, availableCopies, shelf, edition, overview, tableOfContents ->
                 viewModel.editBook(
                     target.copy(
                         title = title.trim(),
@@ -138,7 +139,8 @@ fun LibraryScreen(
                         availableCopies = availableCopies,
                         shelfLocation = shelf.trim(),
                         edition = edition,
-                        overview = overview
+                        overview = overview,
+                        tableOfContents = tableOfContents
                     )
                 )
                 editingBook = null
@@ -716,6 +718,30 @@ private fun BookRow(
                         }
                     }
                 }
+                if (!book.tableOfContents.isNullOrBlank()) {
+                    var expandedToc by remember { mutableStateOf(false) }
+                    Column(modifier = Modifier.padding(top = 2.dp)) {
+                        Text(
+                            text = if (expandedToc) "Table of Contents:\n" + book.tableOfContents else "Contents: " + book.tableOfContents.take(75) + (if (book.tableOfContents.length > 75) "…" else ""),
+                            fontSize = 11.sp,
+                            color = textMuted,
+                            lineHeight = 14.sp,
+                            maxLines = if (expandedToc) 8 else 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (book.tableOfContents.length > 75 || book.tableOfContents.contains("\n")) {
+                            Text(
+                                text = if (expandedToc) "Show less" else "Table of Contents",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryBlue,
+                                modifier = Modifier
+                                    .padding(top = 1.dp)
+                                    .clickable { expandedToc = !expandedToc }
+                            )
+                        }
+                    }
+                }
             }
 
             Column(
@@ -808,7 +834,8 @@ private fun AddEditBookDialog(
         availableCopies: Int,
         shelfLocation: String,
         edition: String?,
-        overview: String?
+        overview: String?,
+        tableOfContents: String?
     ) -> Unit
 ) {
     val isEdit = initial != null
@@ -821,6 +848,7 @@ private fun AddEditBookDialog(
     var shelfText by remember { mutableStateOf(initial?.shelfLocation ?: "Main Hall") }
     var edition by remember { mutableStateOf(initial?.edition ?: "") }
     var overview by remember { mutableStateOf(initial?.overview ?: "") }
+    var tableOfContents by remember { mutableStateOf(initial?.tableOfContents ?: "") }
 
     var showBarcodeScanner by remember { mutableStateOf(false) }
     var lookupBanner by remember { mutableStateOf<String?>(null) }
@@ -845,6 +873,7 @@ private fun AddEditBookDialog(
                         shelfText = result.index ?: shelfText
                         category = result.category
                         overview = result.overview ?: overview
+                        tableOfContents = result.tableOfContents ?: tableOfContents
                         lookupBanner = "Populated via ${result.source ?: "API"}"
                     } else {
                         lookupBanner = "Barcode: $scannedIsbn (Enter details manually or tap Auto-Fill)"
@@ -973,6 +1002,7 @@ private fun AddEditBookDialog(
                                             shelfText = result.index ?: shelfText
                                             category = result.category
                                             overview = result.overview ?: overview
+                                            tableOfContents = result.tableOfContents ?: tableOfContents
                                             lookupBanner = "Populated via ${result.source ?: "API"}"
                                         } else {
                                             lookupBanner = "No metadata found for ISBN $isbn"
@@ -1030,6 +1060,17 @@ private fun AddEditBookDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // 8. Table of Contents
+                OutlinedTextField(
+                    value = tableOfContents,
+                    onValueChange = { tableOfContents = it },
+                    label = { Text("Table of Contents (Chapters / Sections)") },
+                    minLines = 2,
+                    maxLines = 4,
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 // Copies
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -1065,7 +1106,8 @@ private fun AddEditBookDialog(
                         available ?: 0,
                         shelfText,
                         edition.ifBlank { null },
-                        overview.ifBlank { null }
+                        overview.ifBlank { null },
+                        tableOfContents.ifBlank { null }
                     )
                 },
                 enabled = inputsValid,

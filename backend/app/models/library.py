@@ -29,6 +29,7 @@ class Book(Base):
     shelf_location: Mapped[str] = mapped_column(String(100), nullable=False, default="Main Hall")
     edition: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     overview: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    table_of_contents: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

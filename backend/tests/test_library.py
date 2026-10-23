@@ -449,7 +449,7 @@ async def test_library_book_lookup_and_edition_overview():
         bad_lookup = await client.get(f"{LIBRARY_URL}/lookup/9799999999999", headers=staff_headers)
         assert bad_lookup.status_code == 404
 
-        # 3. Add book with edition, overview, and index
+        # 3. Add book with edition, overview, index, and table_of_contents
         book_payload = {
             "title": "Quantum Computation and Quantum Information",
             "author": "Michael A. Nielsen, Isaac L. Chuang",
@@ -459,6 +459,7 @@ async def test_library_book_lookup_and_edition_overview():
             "shelf_location": "QC174.12 .N54 2010",
             "edition": "10th Anniversary Edition",
             "overview": "Comprehensive introduction to the main ideas and techniques of quantum computation and information.",
+            "table_of_contents": "1. Introduction and overview\n2. Introduction to quantum mechanics\n3. Introduction to computer science",
         }
         create_res = await client.post(LIBRARY_URL, headers=staff_headers, json=book_payload)
         assert create_res.status_code == 201
@@ -466,6 +467,7 @@ async def test_library_book_lookup_and_edition_overview():
         assert created["edition"] == "10th Anniversary Edition"
         assert created["shelf_location"] == "QC174.12 .N54 2010"
         assert "Comprehensive introduction" in created["overview"]
+        assert "1. Introduction and overview" in created["table_of_contents"]
 
         # 4. Lookup now finds it from Local Catalogue even if offline
         local_lookup = await client.get(f"{LIBRARY_URL}/lookup/9781107002173", headers=staff_headers)
@@ -473,5 +475,6 @@ async def test_library_book_lookup_and_edition_overview():
         assert local_lookup.json()["title"] == "Quantum Computation and Quantum Information"
         assert local_lookup.json()["edition"] == "10th Anniversary Edition"
         assert local_lookup.json()["index"] == "QC174.12 .N54 2010"
+        assert "1. Introduction and overview" in local_lookup.json()["table_of_contents"]
         assert local_lookup.json()["source"] == "Local Catalogue"
 

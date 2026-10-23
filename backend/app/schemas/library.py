@@ -18,6 +18,7 @@ class BookCreateRequest(BaseModel):
     shelf_location: str = Field(default="Main Hall", min_length=1, max_length=100)
     edition: Optional[str] = Field(None, max_length=100)
     overview: Optional[str] = Field(None, max_length=5000)
+    table_of_contents: Optional[str] = Field(None, max_length=20000)
 
 
 class BookUpdateRequest(BaseModel):
@@ -30,6 +31,7 @@ class BookUpdateRequest(BaseModel):
     shelf_location: Optional[str] = Field(None, min_length=1, max_length=100)
     edition: Optional[str] = Field(None, max_length=100)
     overview: Optional[str] = Field(None, max_length=5000)
+    table_of_contents: Optional[str] = Field(None, max_length=20000)
 
     @model_validator(mode="after")
     def validate_stock_bounds(self):
@@ -51,6 +53,7 @@ class BookResponse(BaseModel):
     shelf_location: str
     edition: Optional[str] = None
     overview: Optional[str] = None
+    table_of_contents: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -64,4 +67,5 @@ class BookLookupResponse(BaseModel):
     isbn: str
     category: str
     overview: Optional[str] = None
+    table_of_contents: Optional[str] = None
     source: str

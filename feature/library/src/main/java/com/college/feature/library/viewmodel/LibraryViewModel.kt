@@ -258,7 +258,8 @@ class LibraryViewModel : ViewModel() {
                     availableCopies = fixed.availableCopies,
                     shelfLocation = fixed.shelfLocation,
                     edition = fixed.edition,
-                    overview = fixed.overview
+                    overview = fixed.overview,
+                    tableOfContents = fixed.tableOfContents
                 )
             )
         }
@@ -273,7 +274,8 @@ class LibraryViewModel : ViewModel() {
         copies: Int,
         shelfLocation: String = "Main Hall",
         edition: String? = null,
-        overview: String? = null
+        overview: String? = null,
+        tableOfContents: String? = null
     ) {
         if (!canUseStaffTools) return
         if (title.isBlank() || author.isBlank() || isbn.isBlank() || category.isBlank()) return
@@ -289,7 +291,8 @@ class LibraryViewModel : ViewModel() {
             availableCopies = total,
             shelfLocation = shelfLocation.trim().ifBlank { "Main Hall" },
             edition = edition?.trim()?.ifBlank { null },
-            overview = overview?.trim()?.ifBlank { null }
+            overview = overview?.trim()?.ifBlank { null },
+            tableOfContents = tableOfContents?.trim()?.ifBlank { null }
         )
 
         LibraryCatalogStore.books.add(book)
@@ -303,7 +306,8 @@ class LibraryViewModel : ViewModel() {
                     totalCopies = book.totalCopies,
                     shelfLocation = book.shelfLocation,
                     edition = book.edition,
-                    overview = book.overview
+                    overview = book.overview,
+                    tableOfContents = book.tableOfContents
                 )
             )
         }
@@ -457,6 +461,7 @@ class LibraryViewModel : ViewModel() {
         availableCopies = availableCopies,
         shelfLocation = shelfLocation ?: "Main Hall",
         edition = edition,
-        overview = overview
+        overview = overview,
+        tableOfContents = tableOfContents
     )
 }

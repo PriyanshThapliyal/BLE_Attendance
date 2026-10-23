@@ -14,7 +14,8 @@ data class Book(
     val availableCopies: Int,
     val shelfLocation: String = "Main Hall",
     val edition: String? = null,
-    val overview: String? = null
+    val overview: String? = null,
+    val tableOfContents: String? = null
 ) {
     val isAvailable: Boolean get() = availableCopies > 0
     val index: String get() = shelfLocation

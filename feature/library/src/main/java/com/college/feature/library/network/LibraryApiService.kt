@@ -66,7 +66,8 @@ data class BookDto(
     @SerializedName("available_copies") val availableCopies: Int,
     @SerializedName("shelf_location") val shelfLocation: String? = null,
     val edition: String? = null,
-    val overview: String? = null
+    val overview: String? = null,
+    @SerializedName("table_of_contents") val tableOfContents: String? = null
 )
 
 data class BookCreateRequest(
@@ -77,7 +78,8 @@ data class BookCreateRequest(
     @SerializedName("total_copies") val totalCopies: Int,
     @SerializedName("shelf_location") val shelfLocation: String? = null,
     val edition: String? = null,
-    val overview: String? = null
+    val overview: String? = null,
+    @SerializedName("table_of_contents") val tableOfContents: String? = null
 )
 
 data class BookUpdateRequest(
@@ -89,7 +91,8 @@ data class BookUpdateRequest(
     @SerializedName("available_copies") val availableCopies: Int? = null,
     @SerializedName("shelf_location") val shelfLocation: String? = null,
     val edition: String? = null,
-    val overview: String? = null
+    val overview: String? = null,
+    @SerializedName("table_of_contents") val tableOfContents: String? = null
 )
 
 data class BookLookupResponse(
@@ -100,5 +103,6 @@ data class BookLookupResponse(
     val isbn: String,
     val category: String,
     val overview: String? = null,
+    @SerializedName("table_of_contents") val tableOfContents: String? = null,
     val source: String? = null
 )

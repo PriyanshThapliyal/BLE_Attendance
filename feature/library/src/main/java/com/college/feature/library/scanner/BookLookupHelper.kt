@@ -76,6 +76,18 @@ object BookLookupHelper {
                 val publishedDate = volumeInfo.optString("publishedDate").takeIf { it.isNotBlank() }
                 val edition = publishedDate?.let { "Published $it" }
 
+                val tocArray = volumeInfo.optJSONArray("tableOfContents")
+                val tableOfContents = if (tocArray != null && tocArray.length() > 0) {
+                    val lines = mutableListOf<String>()
+                    for (i in 0 until tocArray.length()) {
+                        val s = tocArray.optString(i).trim()
+                        if (s.isNotBlank()) lines.add(s)
+                    }
+                    if (lines.isNotEmpty()) lines.joinToString("\n") else null
+                } else {
+                    volumeInfo.optString("tableOfContents").takeIf { it.isNotBlank() }
+                }
+
                 return BookLookupResponse(
                     title = title,
                     author = authors,
@@ -84,6 +96,7 @@ object BookLookupHelper {
                     isbn = isbn,
                     category = category,
                     overview = cleanOverview,
+                    tableOfContents = tableOfContents,
                     source = "Google Books"
                 )
             }
@@ -134,6 +147,30 @@ object BookLookupHelper {
                     else -> null
                 }?.replace(Regex("<[^>]+>"), "")?.trim()
 
+                val tocArray = bookObj.optJSONArray("table_of_contents")
+                val tableOfContents = if (tocArray != null && tocArray.length() > 0) {
+                    val lines = mutableListOf<String>()
+                    for (i in 0 until tocArray.length()) {
+                        val item = tocArray.opt(i)
+                        if (item is JSONObject) {
+                            val label = item.optString("label").trim()
+                            val t = item.optString("title").trim()
+                            val page = item.optString("pagenum").trim()
+                            val line = buildString {
+                                if (label.isNotBlank()) append("$label ")
+                                append(t)
+                                if (page.isNotBlank()) append(" (p. $page)")
+                            }.trim()
+                            if (line.isNotBlank()) lines.add(line)
+                        } else if (item is String && item.isNotBlank()) {
+                            lines.add(item.trim())
+                        }
+                    }
+                    if (lines.isNotEmpty()) lines.joinToString("\n") else null
+                } else {
+                    bookObj.optString("table_of_contents").takeIf { it.isNotBlank() }
+                }
+
                 return BookLookupResponse(
                     title = title,
                     author = authors,
@@ -142,6 +179,7 @@ object BookLookupHelper {
                     isbn = isbn,
                     category = category,
                     overview = overview,
+                    tableOfContents = tableOfContents,
                     source = "OpenLibrary"
                 )
             }

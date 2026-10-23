@@ -29,6 +29,29 @@ def _clean_text(text: Optional[str]) -> Optional[str]:
     return clean if clean else None
 
 
+def _extract_toc(toc_raw) -> Optional[str]:
+    if not toc_raw:
+        return None
+    if isinstance(toc_raw, list):
+        lines = []
+        for item in toc_raw:
+            if isinstance(item, dict):
+                label = str(item.get("label", "")).strip()
+                title = str(item.get("title", "")).strip()
+                page = str(item.get("pagenum", "")).strip()
+                line = f"{label} {title}".strip()
+                if page:
+                    line = f"{line} (p. {page})".strip()
+                if line:
+                    lines.append(line)
+            elif isinstance(item, str) and item.strip():
+                lines.append(item.strip())
+        return "\n".join(lines) if lines else None
+    elif isinstance(toc_raw, str) and toc_raw.strip():
+        return toc_raw.strip()
+    return None
+
+
 async def query_google_books(isbn: str, client: httpx.AsyncClient) -> Optional[dict]:
     params = {"q": f"isbn:{isbn}"}
     api_key = getattr(settings, "GOOGLE_BOOKS_API_KEY", "")
@@ -55,12 +78,14 @@ async def query_google_books(isbn: str, client: httpx.AsyncClient) -> Optional[d
                 edition = None
                 if v.get("publishedDate"):
                     edition = f"Published {v['publishedDate']}"
+                table_of_contents = _extract_toc(v.get("tableOfContents"))
                 return {
                     "title": title,
                     "author": authors,
                     "edition": edition,
                     "category": category,
                     "overview": overview,
+                    "table_of_contents": table_of_contents,
                     "index": "Main Hall",
                     "source": "Google Books",
                 }
@@ -104,6 +129,7 @@ async def query_open_library(isbn: str, client: httpx.AsyncClient) -> Optional[d
                     index = classifications["lc_classifications"][0]
                 elif classifications.get("dewey_decimal_class"):
                     index = classifications["dewey_decimal_class"][0]
+                table_of_contents = _extract_toc(data.get("table_of_contents"))
 
                 return {
                     "title": title,
@@ -111,6 +137,7 @@ async def query_open_library(isbn: str, client: httpx.AsyncClient) -> Optional[d
                     "edition": str(edition) if edition else None,
                     "category": category,
                     "overview": _clean_text(overview),
+                    "table_of_contents": table_of_contents,
                     "index": index,
                     "source": "OpenLibrary",
                 }
@@ -136,12 +163,14 @@ async def query_isbndb(isbn: str, client: httpx.AsyncClient) -> Optional[dict]:
             subjects = b.get("subjects", [])
             category = subjects[0].upper() if subjects else "GENERAL"
             index = b.get("dewey_decimal") or "Main Hall"
+            table_of_contents = _extract_toc(b.get("table_of_contents") or b.get("toc"))
             return {
                 "title": title,
                 "author": authors,
                 "edition": str(edition) if edition else None,
                 "category": category,
                 "overview": overview,
+                "table_of_contents": table_of_contents,
                 "index": index,
                 "source": "ISBNdb",
             }
@@ -176,6 +205,7 @@ async def lookup_book_by_isbn(isbn: str) -> Optional[BookLookupResponse]:
     edition = primary["edition"]
     category = primary["category"]
     overview = primary["overview"]
+    table_of_contents = primary.get("table_of_contents")
     index = primary["index"]
     source = primary["source"]
 
@@ -191,6 +221,8 @@ async def lookup_book_by_isbn(isbn: str) -> Optional[BookLookupResponse]:
             category = secondary["category"]
         if not overview and secondary.get("overview"):
             overview = secondary["overview"]
+        if not table_of_contents and secondary.get("table_of_contents"):
+            table_of_contents = secondary["table_of_contents"]
         if (not index or index == "Main Hall") and secondary.get("index"):
             index = secondary["index"]
         source += f" + {secondary['source']}"
@@ -206,5 +238,6 @@ async def lookup_book_by_isbn(isbn: str) -> Optional[BookLookupResponse]:
         isbn=clean_isbn,
         category=category or "GENERAL",
         overview=overview,
+        table_of_contents=table_of_contents,
         source=source,
     )

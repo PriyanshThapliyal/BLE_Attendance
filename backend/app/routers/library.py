@@ -85,6 +85,7 @@ async def lookup_book(
             isbn=local_book.isbn,
             category=local_book.category,
             overview=local_book.overview,
+            table_of_contents=local_book.table_of_contents,
             source="Local Catalogue",
         )
 
@@ -121,6 +122,7 @@ async def add_book(
         shelf_location=payload.shelf_location.strip(),
         edition=payload.edition.strip() if payload.edition and payload.edition.strip() else None,
         overview=payload.overview.strip() if payload.overview and payload.overview.strip() else None,
+        table_of_contents=payload.table_of_contents.strip() if payload.table_of_contents and payload.table_of_contents.strip() else None,
     )
 
     existing = await db.execute(select(Book).where(Book.isbn == normalized_isbn))
