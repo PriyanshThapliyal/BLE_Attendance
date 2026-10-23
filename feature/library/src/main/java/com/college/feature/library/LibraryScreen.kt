@@ -3,6 +3,7 @@ package com.college.feature.library
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
+import com.college.feature.library.scanner.BarcodeScannerModal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -101,19 +104,30 @@ fun LibraryScreen(
 
     if (showAddBookDialog) {
         AddEditBookDialog(
+            viewModel = viewModel,
             initial = null,
             onDismiss = { showAddBookDialog = false },
-            onConfirm = { title, author, isbn, category, totalCopies, _, _ ->
-                viewModel.addBook(title, author, isbn, category, totalCopies)
+            onConfirm = { title, author, isbn, category, totalCopies, _, shelf, edition, overview ->
+                viewModel.addBook(
+                    title = title,
+                    author = author,
+                    isbn = isbn,
+                    category = category,
+                    copies = totalCopies,
+                    shelfLocation = shelf,
+                    edition = edition,
+                    overview = overview
+                )
                 showAddBookDialog = false
             }
         )
     }
     editingBook?.let { target ->
         AddEditBookDialog(
+            viewModel = viewModel,
             initial = target,
             onDismiss = { editingBook = null },
-            onConfirm = { title, author, isbn, category, totalCopies, availableCopies, shelf ->
+            onConfirm = { title, author, isbn, category, totalCopies, availableCopies, shelf, edition, overview ->
                 viewModel.editBook(
                     target.copy(
                         title = title.trim(),
@@ -122,7 +136,9 @@ fun LibraryScreen(
                         category = category.trim().uppercase(),
                         totalCopies = totalCopies,
                         availableCopies = availableCopies,
-                        shelfLocation = shelf.trim()
+                        shelfLocation = shelf.trim(),
+                        edition = edition,
+                        overview = overview
                     )
                 )
                 editingBook = null
@@ -630,7 +646,10 @@ private fun BookRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = logBg,
@@ -656,6 +675,45 @@ private fun BookRow(
                             color = primaryBlue,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
+                    }
+                    book.edition?.let { ed ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = logBg,
+                            border = BorderStroke(1.dp, cardBorder)
+                        ) {
+                            Text(
+                                text = ed,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textSecondary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                if (!book.overview.isNullOrBlank()) {
+                    var expandedOverview by remember { mutableStateOf(false) }
+                    Column(modifier = Modifier.padding(top = 2.dp)) {
+                        Text(
+                            text = if (expandedOverview) book.overview else book.overview.take(75) + (if (book.overview.length > 75) "…" else ""),
+                            fontSize = 11.sp,
+                            color = textMuted,
+                            lineHeight = 14.sp,
+                            maxLines = if (expandedOverview) 6 else 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (book.overview.length > 75) {
+                            Text(
+                                text = if (expandedOverview) "Show less" else "Overview",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryBlue,
+                                modifier = Modifier
+                                    .padding(top = 1.dp)
+                                    .clickable { expandedOverview = !expandedOverview }
+                            )
+                        }
                     }
                 }
             }
@@ -738,24 +796,63 @@ private fun BookRow(
 
 @Composable
 private fun AddEditBookDialog(
+    viewModel: LibraryViewModel,
     initial: Book?,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, author: String, isbn: String, category: String, totalCopies: Int, availableCopies: Int, shelfLocation: String) -> Unit
+    onConfirm: (
+        title: String,
+        author: String,
+        isbn: String,
+        category: String,
+        totalCopies: Int,
+        availableCopies: Int,
+        shelfLocation: String,
+        edition: String?,
+        overview: String?
+    ) -> Unit
 ) {
     val isEdit = initial != null
     var title by remember { mutableStateOf(initial?.title ?: "") }
     var author by remember { mutableStateOf(initial?.author ?: "") }
     var isbn by remember { mutableStateOf(initial?.isbn ?: "") }
     var category by remember { mutableStateOf(initial?.category ?: "") }
-    var copiesText by remember { mutableStateOf(initial?.totalCopies?.toString() ?: "") }
-    var availableText by remember { mutableStateOf(initial?.availableCopies?.toString() ?: "") }
+    var copiesText by remember { mutableStateOf(initial?.totalCopies?.toString() ?: "1") }
+    var availableText by remember { mutableStateOf(initial?.availableCopies?.toString() ?: "1") }
     var shelfText by remember { mutableStateOf(initial?.shelfLocation ?: "Main Hall") }
+    var edition by remember { mutableStateOf(initial?.edition ?: "") }
+    var overview by remember { mutableStateOf(initial?.overview ?: "") }
+
+    var showBarcodeScanner by remember { mutableStateOf(false) }
+    var lookupBanner by remember { mutableStateOf<String?>(null) }
 
     val total = copiesText.toIntOrNull()
     val available = availableText.toIntOrNull()
     val inputsValid = title.isNotBlank() && author.isNotBlank() && isbn.isNotBlank() &&
         category.isNotBlank() && total != null &&
         ((isEdit && available != null) || !isEdit)
+
+    if (showBarcodeScanner) {
+        BarcodeScannerModal(
+            onDismiss = { showBarcodeScanner = false },
+            onBarcodeScanned = { scannedIsbn ->
+                isbn = scannedIsbn
+                showBarcodeScanner = false
+                viewModel.lookupBook(scannedIsbn) { result ->
+                    if (result != null) {
+                        title = result.title
+                        author = result.author
+                        edition = result.edition ?: edition
+                        shelfText = result.index ?: shelfText
+                        category = result.category
+                        overview = result.overview ?: overview
+                        lookupBanner = "Populated via ${result.source ?: "API"}"
+                    } else {
+                        lookupBanner = "Barcode: $scannedIsbn (Enter details manually or tap Auto-Fill)"
+                    }
+                }
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -777,6 +874,49 @@ private fun AddEditBookDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Barcode scanner trigger at top of intake dialog
+                if (!isEdit) {
+                    OutlinedButton(
+                        onClick = { showBarcodeScanner = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.7f)),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = primaryBlueBg),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.QrCodeScanner,
+                            contentDescription = null,
+                            tint = primaryBlue,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Scan Barcode (Auto-Fill Details)",
+                            fontWeight = FontWeight.Bold,
+                            color = primaryBlue,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    lookupBanner?.let { banner ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (banner.startsWith("Populated")) primaryBlueBg else warningOrangeBg,
+                            border = BorderStroke(1.dp, if (banner.startsWith("Populated")) primaryBlue else warningOrange),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = banner,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (banner.startsWith("Populated")) primaryBlue else warningOrange,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
                 val textFieldColors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = primaryBlue,
                     unfocusedBorderColor = cardBorder,
@@ -789,43 +929,113 @@ private fun AddEditBookDialog(
                     cursorColor = primaryBlue
                 )
 
+                // 1. Book Name
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
+                    label = { Text("Book Name / Title *") },
                     singleLine = true,
                     colors = textFieldColors,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 2. Author
                 OutlinedTextField(
                     value = author,
                     onValueChange = { author = it },
-                    label = { Text("Author") },
+                    label = { Text("Author(s) *") },
                     singleLine = true,
                     colors = textFieldColors,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 3. ISBN with Auto-Fill Action Button
                 OutlinedTextField(
                     value = isbn,
                     onValueChange = { isbn = it },
-                    label = { Text("ISBN") },
+                    label = { Text("ISBN * (10 or 13 digits)") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (viewModel.isLookingUpBook) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = primaryBlue
+                            )
+                        } else {
+                            TextButton(
+                                onClick = {
+                                    viewModel.lookupBook(isbn) { result ->
+                                        if (result != null) {
+                                            title = result.title
+                                            author = result.author
+                                            edition = result.edition ?: edition
+                                            shelfText = result.index ?: shelfText
+                                            category = result.category
+                                            overview = result.overview ?: overview
+                                            lookupBanner = "Populated via ${result.source ?: "API"}"
+                                        } else {
+                                            lookupBanner = "No metadata found for ISBN $isbn"
+                                        }
+                                    }
+                                },
+                                enabled = isbn.trim().length >= 8
+                            ) {
+                                Text("Auto-Fill", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = primaryBlue)
+                            }
+                        }
+                    },
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 4. Edition
+                OutlinedTextField(
+                    value = edition,
+                    onValueChange = { edition = it },
+                    label = { Text("Edition (e.g. 3rd Edition, 2022)") },
                     singleLine = true,
                     colors = textFieldColors,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 5. Index / Shelf Location
+                OutlinedTextField(
+                    value = shelfText,
+                    onValueChange = { shelfText = it },
+                    label = { Text("Index / Shelf Location (e.g. Shelf 2-A, TK5105)") },
+                    singleLine = true,
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 6. Category
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Category (e.g. CS, MATH, PHYSICS, BIO)") },
+                    label = { Text("Category * (e.g. CS, MATH, PHYSICS, BIO)") },
                     singleLine = true,
                     colors = textFieldColors,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 7. Overview
+                OutlinedTextField(
+                    value = overview,
+                    onValueChange = { overview = it },
+                    label = { Text("Overview / Description") },
+                    minLines = 2,
+                    maxLines = 4,
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Copies
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = copiesText,
                         onValueChange = { copiesText = it.filter { c -> c.isDigit() } },
-                        label = { Text(if (isEdit) "Total Copies" else "Copies") },
+                        label = { Text(if (isEdit) "Total Copies *" else "Copies *") },
                         singleLine = true,
                         colors = textFieldColors,
                         modifier = Modifier.weight(1f)
@@ -834,22 +1044,12 @@ private fun AddEditBookDialog(
                         OutlinedTextField(
                             value = availableText,
                             onValueChange = { availableText = it.filter { c -> c.isDigit() } },
-                            label = { Text("Available") },
+                            label = { Text("Available *") },
                             singleLine = true,
                             colors = textFieldColors,
                             modifier = Modifier.weight(1f)
                         )
                     }
-                }
-                if (isEdit) {
-                    OutlinedTextField(
-                        value = shelfText,
-                        onValueChange = { shelfText = it },
-                        label = { Text("Shelf Location (e.g. Shelf 3-B)") },
-                        singleLine = true,
-                        colors = textFieldColors,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         },
@@ -863,7 +1063,9 @@ private fun AddEditBookDialog(
                         category,
                         total ?: 0,
                         available ?: 0,
-                        shelfText
+                        shelfText,
+                        edition.ifBlank { null },
+                        overview.ifBlank { null }
                     )
                 },
                 enabled = inputsValid,
@@ -873,7 +1075,7 @@ private fun AddEditBookDialog(
                     contentColor = Color.White
                 )
             ) {
-                Text(if (isEdit) "Save" else "Add", fontWeight = FontWeight.Bold)
+                Text(if (isEdit) "Save" else "Add to Catalogue", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

@@ -10,9 +10,11 @@ import com.college.core.network.SessionManager
 import com.college.feature.library.model.Book
 import com.college.feature.library.network.BookCreateRequest
 import com.college.feature.library.network.BookUpdateRequest
+import com.college.feature.library.network.BookLookupResponse
 import com.college.feature.library.network.LibraryApiClient
 import com.college.feature.library.network.LibraryApiService
 import com.college.feature.library.network.BookDto
+import com.college.feature.library.scanner.BookLookupHelper
 import retrofit2.Response
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -254,14 +256,25 @@ class LibraryViewModel : ViewModel() {
                     category = fixed.category,
                     totalCopies = fixed.totalCopies,
                     availableCopies = fixed.availableCopies,
-                    shelfLocation = fixed.shelfLocation
+                    shelfLocation = fixed.shelfLocation,
+                    edition = fixed.edition,
+                    overview = fixed.overview
                 )
             )
         }
     }
 
     /** Staff add a title to the catalogue (available == total on intake). */
-    fun addBook(title: String, author: String, isbn: String, category: String, copies: Int) {
+    fun addBook(
+        title: String,
+        author: String,
+        isbn: String,
+        category: String,
+        copies: Int,
+        shelfLocation: String = "Main Hall",
+        edition: String? = null,
+        overview: String? = null
+    ) {
         if (!canUseStaffTools) return
         if (title.isBlank() || author.isBlank() || isbn.isBlank() || category.isBlank()) return
 
@@ -274,7 +287,9 @@ class LibraryViewModel : ViewModel() {
             category = category.trim().uppercase(),
             totalCopies = total,
             availableCopies = total,
-            shelfLocation = "Main Hall"
+            shelfLocation = shelfLocation.trim().ifBlank { "Main Hall" },
+            edition = edition?.trim()?.ifBlank { null },
+            overview = overview?.trim()?.ifBlank { null }
         )
 
         LibraryCatalogStore.books.add(book)
@@ -286,9 +301,37 @@ class LibraryViewModel : ViewModel() {
                     isbn = book.isbn,
                     category = book.category,
                     totalCopies = book.totalCopies,
-                    shelfLocation = book.shelfLocation
+                    shelfLocation = book.shelfLocation,
+                    edition = book.edition,
+                    overview = book.overview
                 )
             )
+        }
+    }
+
+    /** Active book lookup state (for UI loading indicators). */
+    var isLookingUpBook by mutableStateOf(false)
+        private set
+
+    /**
+     * Look up book details by ISBN barcode using the cascading Google Books,
+     * OpenLibrary, and ISBNdb providers.
+     */
+    fun lookupBook(isbn: String, onResult: (BookLookupResponse?) -> Unit) {
+        viewModelScope.launch {
+            isLookingUpBook = true
+            try {
+                val result = BookLookupHelper.lookup(isbn)
+                withContext(Dispatchers.Main) {
+                    onResult(result)
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    onResult(null)
+                }
+            } finally {
+                isLookingUpBook = false
+            }
         }
     }
 
@@ -412,6 +455,8 @@ class LibraryViewModel : ViewModel() {
         category = category,
         totalCopies = totalCopies,
         availableCopies = availableCopies,
-        shelfLocation = shelfLocation ?: "Main Hall"
+        shelfLocation = shelfLocation ?: "Main Hall",
+        edition = edition,
+        overview = overview
     )
 }
