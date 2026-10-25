@@ -1,5 +1,6 @@
 package com.college.feature.library
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,9 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import com.college.feature.library.scanner.BarcodeScannerModal
@@ -600,217 +605,376 @@ private fun BookRow(
     onEdit: (Book) -> Unit = {},
     onDelete: (Book) -> Unit = {}
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { expanded = !expanded }
+            .animateContentSize(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg),
-        border = BorderStroke(1.dp, cardBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(1.dp, if (expanded) primaryBlue.copy(alpha = 0.5f) else cardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (expanded) 3.dp else 1.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Cover art tile: first letter
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(primaryBlueBg)
-                    .border(1.dp, primaryBlue.copy(alpha = 0.3f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
+            // Summary header (always visible)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = book.title.take(1).uppercase(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    color = primaryBlue
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = book.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = book.author,
-                    fontSize = 12.sp,
-                    color = textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Cover art tile: first letter
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(primaryBlueBg)
+                        .border(1.dp, primaryBlue.copy(alpha = 0.3f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = logBg,
-                        border = BorderStroke(1.dp, cardBorder)
+                    Text(
+                        text = book.title.take(1).uppercase(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = primaryBlue
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = book.title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimary,
+                        maxLines = if (expanded) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = book.author,
+                        fontSize = 12.sp,
+                        color = textSecondary,
+                        maxLines = if (expanded) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = book.shelfLocation,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = textSecondary,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = primaryBlueBg,
-                        border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.3f))
-                    ) {
-                        Text(
-                            text = book.category,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = primaryBlue,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    book.edition?.let { ed ->
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = logBg,
                             border = BorderStroke(1.dp, cardBorder)
                         ) {
                             Text(
-                                text = ed,
+                                text = book.shelfLocation,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = textSecondary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
-                    }
-                }
-                if (!book.overview.isNullOrBlank()) {
-                    var expandedOverview by remember { mutableStateOf(false) }
-                    Column(modifier = Modifier.padding(top = 2.dp)) {
-                        Text(
-                            text = if (expandedOverview) book.overview else book.overview.take(75) + (if (book.overview.length > 75) "…" else ""),
-                            fontSize = 11.sp,
-                            color = textMuted,
-                            lineHeight = 14.sp,
-                            maxLines = if (expandedOverview) 6 else 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (book.overview.length > 75) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = primaryBlueBg,
+                            border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.3f))
+                        ) {
                             Text(
-                                text = if (expandedOverview) "Show less" else "Overview",
+                                text = book.category,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = primaryBlue,
-                                modifier = Modifier
-                                    .padding(top = 1.dp)
-                                    .clickable { expandedOverview = !expandedOverview }
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
+                        }
+                        book.edition?.let { ed ->
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = logBg,
+                                border = BorderStroke(1.dp, cardBorder)
+                            ) {
+                                Text(
+                                    text = ed,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = textSecondary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
-                if (!book.tableOfContents.isNullOrBlank()) {
-                    var expandedToc by remember { mutableStateOf(false) }
-                    Column(modifier = Modifier.padding(top = 2.dp)) {
-                        Text(
-                            text = if (expandedToc) "Table of Contents:\n" + book.tableOfContents else "Contents: " + book.tableOfContents.take(75) + (if (book.tableOfContents.length > 75) "…" else ""),
-                            fontSize = 11.sp,
-                            color = textMuted,
-                            lineHeight = 14.sp,
-                            maxLines = if (expandedToc) 8 else 2,
-                            overflow = TextOverflow.Ellipsis
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Availability status pill
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (book.isAvailable) successGreenBg else warningOrangeBg,
+                        border = BorderStroke(
+                            1.dp,
+                            if (book.isAvailable) successGreen.copy(alpha = 0.5f) else warningOrange.copy(alpha = 0.5f)
                         )
-                        if (book.tableOfContents.length > 75 || book.tableOfContents.contains("\n")) {
-                            Text(
-                                text = if (expandedToc) "Show less" else "Table of Contents",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = primaryBlue,
-                                modifier = Modifier
-                                    .padding(top = 1.dp)
-                                    .clickable { expandedToc = !expandedToc }
-                            )
-                        }
+                    ) {
+                        Text(
+                            text = if (book.isAvailable)
+                                "${book.availableCopies} of ${book.totalCopies} Available"
+                            else
+                                "Checked Out",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (book.isAvailable) successGreen else warningOrange,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    // Dropdown chevron indicator
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = if (expanded) "Less" else "Details",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryBlue
+                        )
+                        Icon(
+                            imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expanded) "Collapse details" else "Expand details",
+                            tint = primaryBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Availability status pill
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (book.isAvailable) successGreenBg else warningOrangeBg,
-                    border = BorderStroke(
-                        1.dp,
-                        if (book.isAvailable) successGreen.copy(alpha = 0.5f) else warningOrange.copy(alpha = 0.5f)
-                    )
+            // Dropdown expanded content showing all details
+            if (expanded) {
+                HorizontalDivider(color = cardBorder, modifier = Modifier.padding(vertical = 2.dp))
+
+                // Metadata details: ISBN, Location, Total Inventory
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = logBg,
+                            border = BorderStroke(1.dp, cardBorder)
+                        ) {
+                            Text(
+                                text = "ISBN: ${book.isbn}",
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Medium,
+                                color = textPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = logBg,
+                            border = BorderStroke(1.dp, cardBorder)
+                        ) {
+                            Text(
+                                text = "Shelf: ${book.shelfLocation}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = textPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        book.edition?.let { ed ->
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = logBg,
+                                border = BorderStroke(1.dp, cardBorder)
+                            ) {
+                                Text(
+                                    text = ed,
+                                    fontSize = 11.sp,
+                                    color = textSecondary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Text(
-                        text = if (book.isAvailable)
-                            "${book.availableCopies} of ${book.totalCopies} Available"
-                        else
-                            "Checked Out",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (book.isAvailable) successGreen else warningOrange,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = "Inventory: ${book.availableCopies} available on shelf · ${book.totalCopies} total copies in collection",
+                        fontSize = 11.sp,
+                        color = textMuted
                     )
                 }
 
-                // Member action: reserve a copy
-                if (book.isAvailable) {
-                    OutlinedButton(
-                        onClick = onReserve,
-                        enabled = !isReserving,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, if (isReserving) cardBorder else primaryBlue.copy(alpha = 0.6f)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                // Overview section (if present)
+                if (!book.overview.isNullOrBlank()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (isReserving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(12.dp),
-                                strokeWidth = 2.dp,
-                                color = textSecondary
+                        Text(
+                            text = "Overview",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryBlue
+                        )
+                        Text(
+                            text = book.overview,
+                            fontSize = 12.sp,
+                            color = textSecondary,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                // Table of Contents section (if present)
+                if (!book.tableOfContents.isNullOrBlank()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                contentDescription = null,
+                                tint = primaryBlue,
+                                modifier = Modifier.size(15.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Reserving…", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = textSecondary)
-                        } else {
-                            Text("Reserve", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = primaryBlue)
+                            Text(
+                                text = "Table of Contents",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryBlue
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = logBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                book.tableOfContents.lines().filter { it.isNotBlank() }.forEach { line ->
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Text(
+                                            text = "•",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = primaryBlue
+                                        )
+                                        Text(
+                                            text = line.trim(),
+                                            fontSize = 11.sp,
+                                            color = textPrimary,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                // Staff-only controls (never rendered for ordinary members)
-                if (staffControls) {
-                    Row {
-                        IconButton(onClick = { onEdit(book) }, modifier = Modifier.size(32.dp)) {
-                            Icon(
-                                Icons.Filled.Edit,
-                                contentDescription = "Edit book",
-                                tint = primaryBlue,
-                                modifier = Modifier.size(18.dp)
-                            )
+                // Actions footer in expanded drop-down
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (staffControls) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { onEdit(book) },
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = null,
+                                    tint = primaryBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Edit", fontSize = 11.sp, color = primaryBlue)
+                            }
+                            OutlinedButton(
+                                onClick = { onDelete(book) },
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, alertRed.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = null,
+                                    tint = alertRed,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Delete", fontSize = 11.sp, color = alertRed)
+                            }
                         }
-                        IconButton(onClick = { onDelete(book) }, modifier = Modifier.size(32.dp)) {
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = "Remove book",
-                                tint = alertRed,
-                                modifier = Modifier.size(18.dp)
-                            )
+                    } else {
+                        Spacer(modifier = Modifier.width(1.dp))
+                    }
+
+                    if (book.isAvailable) {
+                        Button(
+                            onClick = onReserve,
+                            enabled = !isReserving,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryBlue,
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            if (isReserving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Reserving…", fontSize = 11.sp, color = Color.White)
+                            } else {
+                                Text("Reserve Copy", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
+                    } else {
+                        Text(
+                            text = "All Copies Checked Out",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = warningOrange
+                        )
                     }
                 }
             }
@@ -873,8 +1037,14 @@ private fun AddEditBookDialog(
                         shelfText = result.index ?: shelfText
                         category = result.category
                         overview = result.overview ?: overview
-                        tableOfContents = result.tableOfContents ?: tableOfContents
-                        lookupBanner = "Populated via ${result.source ?: "API"}"
+                        tableOfContents = result.tableOfContents ?: ""
+                        val tocInfo = if (!result.tableOfContents.isNullOrBlank()) {
+                            val count = result.tableOfContents.lines().count { it.isNotBlank() }
+                            " · $count TOC chapters found"
+                        } else {
+                            " · No TOC available online (left empty)"
+                        }
+                        lookupBanner = "Populated via ${result.source ?: "API"}$tocInfo"
                     } else {
                         lookupBanner = "Barcode: $scannedIsbn (Enter details manually or tap Auto-Fill)"
                     }
@@ -1002,8 +1172,14 @@ private fun AddEditBookDialog(
                                             shelfText = result.index ?: shelfText
                                             category = result.category
                                             overview = result.overview ?: overview
-                                            tableOfContents = result.tableOfContents ?: tableOfContents
-                                            lookupBanner = "Populated via ${result.source ?: "API"}"
+                                            tableOfContents = result.tableOfContents ?: ""
+                                            val tocInfo = if (!result.tableOfContents.isNullOrBlank()) {
+                                                val count = result.tableOfContents.lines().count { it.isNotBlank() }
+                                                " · $count TOC chapters found"
+                                            } else {
+                                                " · No TOC available online (left empty)"
+                                            }
+                                            lookupBanner = "Populated via ${result.source ?: "API"}$tocInfo"
                                         } else {
                                             lookupBanner = "No metadata found for ISBN $isbn"
                                         }
