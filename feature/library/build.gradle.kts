@@ -35,10 +35,10 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.9")
 
     // CameraX & ML Kit Barcode Scanning for ISBN book intake
-    val cameraxVersion = "1.3.1"
+    val cameraxVersion = "1.4.0"
     implementation("androidx.camera:camera-core:$cameraxVersion")
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
-    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }
