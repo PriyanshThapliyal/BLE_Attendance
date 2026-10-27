@@ -490,4 +490,90 @@ async def test_expired_otp_purging_and_cleanup():
             assert rec is None
 
 
+def test_attendance_session_model_new_fields():
+    from app.models.attendance import AttendanceSession
+    columns = {c.name for c in AttendanceSession.__table__.columns}
+    assert "subject_name" in columns
+    assert "branch" in columns
+    assert "batch_type" in columns
+    assert "period" in columns
+
+
+@pytest.mark.anyio
+async def test_session_create_with_academic_fields():
+    import uuid
+    from datetime import datetime, timezone
+    from httpx import AsyncClient, ASGITransport
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from app.database import get_db
+    from app.models.attendance import Base, EmailOTP
+    from sqlalchemy import select
+
+    test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    test_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def override_get_db():
+        async with test_session_factory() as s:
+            yield s
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Register a teacher
+        t_reg = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "name": "Prof. Turing",
+                "email": "turing@univ.edu",
+                "password": "Password123!",
+                "role": "TEACHER",
+                "roll_number": "EMP888",
+                "department": "CSE",
+                "faculty_code": settings.FACULTY_SIGNUP_SECRET,
+            },
+        )
+        assert t_reg.status_code == 200
+
+        async with test_session_factory() as s:
+            otp_record = (await s.execute(select(EmailOTP).where(EmailOTP.email == "turing@univ.edu"))).scalars().first()
+            otp_code = otp_record.otp_code
+
+        verify_reg = await client.post(
+            "/api/v1/auth/register/verify-otp",
+            json={"email": "turing@univ.edu", "otp_code": otp_code},
+        )
+        assert verify_reg.status_code == 201
+        token = verify_reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Create session with subject_name, branch, batch_type (Tutorial), period (3), manual date_time
+        custom_time = "2026-10-28T09:30:00Z"
+        res = await client.post(
+            "/api/v1/attendance/sessions",
+            headers=headers,
+            json={
+                "session_token": "TUT1",
+                "session_salt": "SALT",
+                "total_enrolled": 30,
+                "subject_name": "Computer Networks",
+                "branch": "CSE",
+                "batch_type": "Tutorial",
+                "period": 3,
+                "date_time": custom_time,
+            },
+        )
+        assert res.status_code == 201
+        data = res.json()
+        assert data["subject_name"] == "Computer Networks"
+        assert data["branch"] == "CSE"
+        assert data["batch_type"] == "Tutorial"
+        assert data["period"] == 3
+        assert data["date_time"] is not None
+        assert "2026-10-28" in data["date_time"]
+
+
 

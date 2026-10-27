@@ -104,6 +104,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     var selectedCourse by mutableStateOf<CourseResponse?>(null)
     var isLoadingCourses by mutableStateOf(false)
 
+    // Academic session parameters
+    var selectedSubjectName by mutableStateOf("Computer Networks")
+    var selectedBranch by mutableStateOf("CSE")
+    var selectedBatchType by mutableStateOf("Lecture")
+    var selectedPeriod by mutableIntStateOf(1)
+    var selectedDateTime by mutableStateOf("")
+
     // BLE session state
     var isSessionActive by mutableStateOf(false)
     var sessionId by mutableStateOf("----")
@@ -590,7 +597,27 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     // Start teacher session and initialize backend record
-    fun startTeacherSession(durationSeconds: Int = 60, courseId: String? = null) {
+    fun startTeacherSession(
+        durationSeconds: Int = 60,
+        courseId: String? = null,
+        subjectName: String? = null,
+        branch: String? = null,
+        batchType: String? = null,
+        period: Int? = null,
+        dateTime: String? = null
+    ) {
+        if (subjectName != null) selectedSubjectName = subjectName
+        if (branch != null) selectedBranch = branch
+        if (batchType != null) selectedBatchType = batchType
+        if (period != null) selectedPeriod = period
+        if (dateTime != null) selectedDateTime = dateTime
+
+        val activeSubject = selectedSubjectName
+        val activeBranch = selectedBranch
+        val activeBatch = selectedBatchType
+        val activePeriod = selectedPeriod
+        val activeDateTime = selectedDateTime
+
         val targetCourseId = courseId ?: selectedCourse?.id
         backendSessionId = null
         sessionId = UUID.randomUUID().toString().replace("-", "").take(4).uppercase()
@@ -613,7 +640,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         sessionToken = sessionId,
                         sessionSalt = sessionSalt,
                         courseCode = selectedCourse?.courseCode,
-                        courseName = selectedCourse?.courseName
+                        courseName = selectedCourse?.courseName,
+                        subjectName = activeSubject,
+                        branch = activeBranch,
+                        batchType = activeBatch,
+                        period = activePeriod,
+                        dateTime = activeDateTime.ifBlank { null }
                     )
                     val res = api.createSession(req)
                     withContext(Dispatchers.Main) {
@@ -698,6 +730,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun recordSessionToHistory(records: List<AttendanceRecordItem>) {
         val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        val sessionTime = selectedDateTime.ifBlank { timestamp }
         val completedSession = AttendanceSessionResponse(
             id = backendSessionId ?: sessionId,
             courseId = selectedCourse?.id ?: "",
@@ -705,10 +738,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             status = "COMPLETED",
             totalVerified = records.count { it.status == "VERIFIED_PRESENT" },
             totalSpoofers = records.count { it.status == "SPOOFER_REJECTED" },
-            startedAt = timestamp,
+            startedAt = sessionTime,
             records = records,
             courseCode = selectedCourse?.courseCode ?: "",
-            courseName = selectedCourse?.courseName ?: ""
+            courseName = selectedCourse?.courseName ?: "",
+            subjectName = selectedSubjectName,
+            branch = selectedBranch,
+            batchType = selectedBatchType,
+            period = selectedPeriod,
+            dateTime = sessionTime
         )
         pastSessions = listOf(completedSession) + pastSessions.filter { it.id != completedSession.id }
     }

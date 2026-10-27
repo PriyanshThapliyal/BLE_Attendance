@@ -50,6 +50,10 @@ class AttendanceSession(Base):
     # Nullable in DB (pre-salt legacy rows); enforced as required at the API layer.
     session_salt: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="ACTIVE")
+    subject_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    branch: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    batch_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    period: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

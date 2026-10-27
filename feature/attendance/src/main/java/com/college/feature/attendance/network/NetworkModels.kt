@@ -83,7 +83,12 @@ data class SessionCreateRequest(
     @SerializedName("session_salt") val sessionSalt: String? = null,
     @SerializedName("total_enrolled") val totalEnrolled: Int = 0,
     @SerializedName("course_code") val courseCode: String? = null,
-    @SerializedName("course_name") val courseName: String? = null
+    @SerializedName("course_name") val courseName: String? = null,
+    @SerializedName("subject_name") val subjectName: String? = null,
+    @SerializedName("branch") val branch: String? = null,
+    @SerializedName("batch_type") val batchType: String? = null,
+    @SerializedName("period") val period: Int? = null,
+    @SerializedName("date_time") val dateTime: String? = null
 )
 
 data class AttendanceRecordItem(
@@ -114,7 +119,11 @@ data class AttendanceSessionResponse(
     @SerializedName("semester") val semester: String? = null,
     @SerializedName("batch_type") val batchType: String? = null,
     @SerializedName("unit") val unit: String? = null,
-    @SerializedName("topic_covered") val topicCovered: String? = null
+    @SerializedName("topic_covered") val topicCovered: String? = null,
+    @SerializedName("subject_name") val subjectName: String? = null,
+    @SerializedName("branch") val branch: String? = null,
+    @SerializedName("period") val period: Int? = null,
+    @SerializedName("date_time") val dateTime: String? = null
 )
 
 // Payload when posting BLE mesh graph

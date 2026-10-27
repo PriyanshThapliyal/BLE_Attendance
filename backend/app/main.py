@@ -41,6 +41,10 @@ BEGIN
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS session_token VARCHAR(32);
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS session_salt VARCHAR(8);
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';
+    ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS subject_name VARCHAR(200);
+    ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS branch VARCHAR(50);
+    ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS batch_type VARCHAR(50);
+    ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS period INTEGER;
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS ended_at TIMESTAMP WITH TIME ZONE;
     ALTER TABLE attendance_sessions ADD COLUMN IF NOT EXISTS total_enrolled INTEGER DEFAULT 0;

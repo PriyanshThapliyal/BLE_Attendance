@@ -217,6 +217,10 @@ async def list_teacher_sessions_history(
             if c:
                 s.course_code = c.course_code
                 s.course_name = c.course_name
+            s.date_time = s.started_at
+    else:
+        for s in sessions:
+            s.date_time = s.started_at
 
     # Populate student details on records
     student_ids = [r.student_id for s in sessions if s.records for r in s.records if r.student_id]
@@ -277,7 +281,7 @@ async def create_attendance_session(
             new_c = Course(
                 id=new_course_id,
                 course_code=code_to_check,
-                course_name=(payload.course_name or "General Lecture & Attendance")[:200],
+                course_name=(payload.course_name or payload.subject_name or "General Lecture & Attendance")[:200],
                 teacher_id=current_user.id,
             )
             db.add(new_c)
@@ -301,6 +305,7 @@ async def create_attendance_session(
     if existing_active:
         await db.commit()
 
+    session_start_time = payload.date_time or datetime.now(timezone.utc)
     session = AttendanceSession(
         id=uuid.uuid4(),
         course_id=target_course_id,
@@ -309,12 +314,17 @@ async def create_attendance_session(
         session_salt=payload.session_salt,
         status="ACTIVE",
         total_enrolled=payload.total_enrolled,
-        started_at=datetime.now(timezone.utc),
+        started_at=session_start_time,
+        subject_name=payload.subject_name,
+        branch=payload.branch,
+        batch_type=payload.batch_type,
+        period=payload.period,
     )
     db.add(session)
     await db.commit()
     await db.refresh(session)
     session.records = []
+    session.date_time = session.started_at
 
     course_obj = (await db.execute(select(Course).where(Course.id == target_course_id))).scalars().first()
     if course_obj:
@@ -685,6 +695,7 @@ async def get_session_details(
     if course_obj:
         session_obj.course_code = course_obj.course_code
         session_obj.course_name = course_obj.course_name
+    session_obj.date_time = session_obj.started_at
 
     if session_obj.records:
         rec_user_ids = [r.student_id for r in session_obj.records if r.student_id]

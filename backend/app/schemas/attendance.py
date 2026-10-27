@@ -80,6 +80,11 @@ class SessionCreateRequest(BaseModel):
     )
     course_code: Optional[str] = Field(None, max_length=50)
     course_name: Optional[str] = Field(None, max_length=200)
+    subject_name: Optional[str] = Field(None, max_length=200, description="Subject Name e.g. Computer Networks")
+    branch: Optional[str] = Field(None, max_length=50, description="Branch e.g. CSE, Mech, ECE, EE, Civil")
+    batch_type: Optional[str] = Field(None, max_length=50, description="Batch e.g. Lecture, Lab, Tutorial")
+    period: Optional[int] = Field(None, ge=1, le=9, description="Period (1-9)")
+    date_time: Optional[datetime] = Field(None, description="Session Date-Time (manual or default current)")
     session_token: str = Field(..., max_length=32, description="Ephemeral token for this class")
     session_salt: str = Field(
         ...,
@@ -137,5 +142,10 @@ class AttendanceSessionResponse(BaseModel):
     records: Optional[List[AttendanceRecordResponse]] = None
     course_code: Optional[str] = None
     course_name: Optional[str] = None
+    subject_name: Optional[str] = None
+    branch: Optional[str] = None
+    batch_type: Optional[str] = None
+    period: Optional[int] = None
+    date_time: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
