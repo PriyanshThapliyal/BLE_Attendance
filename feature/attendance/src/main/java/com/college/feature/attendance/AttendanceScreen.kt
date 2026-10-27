@@ -244,12 +244,10 @@ fun AttendanceScreen(
                     cloudStatusMessage = cloudStatusMessage,
                     selectedCourse = selectedCourse,
                     onSelectCourse = onSelectCourse,
-                    onAcademicDetailsChanged = { subj, br, batch, per, dt ->
-                        viewModel.selectedSubjectName = subj
+                    onAcademicDetailsChanged = { br, batch, per ->
                         viewModel.selectedBranch = br
                         viewModel.selectedBatchType = batch
                         viewModel.selectedPeriod = per
-                        viewModel.selectedDateTime = dt
                     },
                     onStartSession = callbacks.onStartTeacherSession,
                     onStopSession = callbacks.onStopTeacherSession,
@@ -1068,7 +1066,7 @@ private fun TeacherSection(
     cloudStatusMessage: String?,
     selectedCourse: CourseResponse?,
     onSelectCourse: (CourseResponse) -> Unit,
-    onAcademicDetailsChanged: (subjectName: String, branch: String, batchType: String, period: Int, dateTime: String) -> Unit = { _, _, _, _, _ -> },
+    onAcademicDetailsChanged: (branch: String, batchType: String, period: Int) -> Unit = { _, _, _ -> },
     onStartSession: () -> Unit,
     onStopSession: () -> Unit,
     onShareAttendance: () -> Unit,
@@ -1862,129 +1860,10 @@ private fun AppDropdownField(
 }
 
 @Composable
-private fun AppEditableDropdownField(
-    label: String,
-    value: String,
-    options: List<String>,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    placeholder: String = "Enter or select $label"
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var anchorWidthPx by remember { mutableIntStateOf(0) }
-
-    Box(
-        modifier = modifier.onGloballyPositioned { coordinates ->
-            anchorWidthPx = coordinates.size.width
-        }
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder = { Text(placeholder, color = textMuted) },
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryBlue,
-                unfocusedBorderColor = cardBorder,
-                focusedTextColor = textPrimary,
-                unfocusedTextColor = textPrimary,
-                focusedContainerColor = cardBg,
-                unfocusedContainerColor = cardBg
-            ),
-            trailingIcon = {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = "Select $label",
-                        tint = textSecondary,
-                        modifier = Modifier.rotate(if (expanded) 180f else 0f)
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (expanded) {
-            val density = LocalDensity.current
-            val positionProvider = remember(density) {
-                object : PopupPositionProvider {
-                    override fun calculatePosition(
-                        anchorBounds: IntRect,
-                        windowSize: IntSize,
-                        layoutDirection: LayoutDirection,
-                        popupContentSize: IntSize
-                    ): IntOffset {
-                        val offsetDown = with(density) { 4.dp.roundToPx() }
-                        return IntOffset(
-                            x = anchorBounds.left,
-                            y = anchorBounds.bottom + offsetDown
-                        )
-                    }
-                }
-            }
-
-            Popup(
-                popupPositionProvider = positionProvider,
-                onDismissRequest = { expanded = false },
-                properties = PopupProperties(
-                    focusable = true,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                )
-            ) {
-                val anchorWidthDp = with(density) { anchorWidthPx.toDp() }
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = cardBg,
-                    shadowElevation = 8.dp,
-                    border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.5f)),
-                    modifier = Modifier.width(if (anchorWidthDp > 0.dp) anchorWidthDp else 280.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 240.dp)
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 4.dp)
-                    ) {
-                        options.forEach { option ->
-                            val isSelected = option == value
-                            Surface(
-                                onClick = {
-                                    onValueChange(option)
-                                    expanded = false
-                                },
-                                color = if (isSelected) primaryBlueBg else cardBg,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = option,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) primaryBlue else textPrimary
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun TakeAttendanceSelectionView(
     onStartSession: () -> Unit,
     onSelectCourse: (CourseResponse) -> Unit,
-    onAcademicDetailsChanged: (subjectName: String, branch: String, batchType: String, period: Int, dateTime: String) -> Unit,
+    onAcademicDetailsChanged: (branch: String, batchType: String, period: Int) -> Unit,
     isCloudSyncing: Boolean,
     cloudStatusMessage: String?
 ) {
@@ -1992,38 +1871,19 @@ private fun TakeAttendanceSelectionView(
     var courseProgram by remember { mutableStateOf("B-Tech") }
     var branch by remember { mutableStateOf("CSE") }
     var semester by remember { mutableStateOf("Semester 1") }
-    var period by remember { mutableStateOf("Period 1") }
-    var subjectName by remember { mutableStateOf("Computer Networks") }
     var batchType by remember { mutableStateOf("Lecture") }
+    var period by remember { mutableStateOf("Period 1") }
     var selectedUnit by remember { mutableStateOf("Unit 1") }
     var topicCovered by remember { mutableStateOf("Foundations & System Architecture") }
-    var dateTime by remember {
-        mutableStateOf(java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()))
-    }
 
-    val standardSubjects = remember {
-        listOf(
-            "Computer Networks",
-            "Operating Systems",
-            "Database Management Systems",
-            "Data Structures & Algorithms",
-            "Theory of Computation",
-            "Software Engineering",
-            "Digital Electronics",
-            "Microprocessors",
-            "Machine Learning",
-            "Compiler Design",
-            "Object Oriented Programming",
-            "Engineering Mathematics"
-        )
-    }
-
-    LaunchedEffect(classType, courseProgram, branch, semester, period, subjectName, batchType, selectedUnit, topicCovered, dateTime) {
+    LaunchedEffect(classType, courseProgram, branch, semester, batchType, period, selectedUnit, topicCovered) {
         val topicSuffix = if (topicCovered.isNotBlank()) " • $topicCovered" else ""
         val periodNum = period.replace("Period ", "").trim().toIntOrNull() ?: 1
         val code = "$courseProgram ($branch) $semester • P$periodNum"
-        val name = "$subjectName ($classType $batchType • $selectedUnit$topicSuffix)"
-        val stableCourseId = java.util.UUID.nameUUIDFromBytes("academic-${courseProgram.lowercase()}-${branch.lowercase()}-${semester.replace(" ", "").lowercase()}-${subjectName.lowercase().replace(" ", "")}".toByteArray()).toString()
+        val name = "$classType $batchType ($selectedUnit$topicSuffix)"
+        val stableCourseId = java.util.UUID.nameUUIDFromBytes(
+            "academic-${courseProgram.lowercase()}-${branch.lowercase()}-${semester.replace(" ", "").lowercase()}".toByteArray()
+        ).toString()
         onSelectCourse(
             CourseResponse(
                 id = stableCourseId,
@@ -2032,11 +1892,9 @@ private fun TakeAttendanceSelectionView(
             )
         )
         onAcademicDetailsChanged(
-            subjectName,
             branch,
             batchType,
-            periodNum,
-            dateTime
+            periodNum
         )
     }
 
@@ -2056,17 +1914,7 @@ private fun TakeAttendanceSelectionView(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 2. Subject Name Option (Editable with common suggestions)
-        AppEditableDropdownField(
-            label = "Subject Name",
-            value = subjectName,
-            options = standardSubjects,
-            onValueChange = { subjectName = it },
-            placeholder = "e.g. Computer Networks, OS, DBMS",
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // 3. Course Program & Branch Dropdowns (Side-by-side)
+        // 2. Course Program & Branch Dropdowns (Side-by-side)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -2090,7 +1938,7 @@ private fun TakeAttendanceSelectionView(
             )
         }
 
-        // 4. Semester & Period Dropdowns (Side-by-side)
+        // 3. Semester & Batch Dropdowns (Side-by-side) — Batch paired with Semester
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -2105,26 +1953,26 @@ private fun TakeAttendanceSelectionView(
             )
 
             AppDropdownField(
-                label = "Period",
-                selectedValue = period,
-                options = (1..9).map { "Period $it" },
-                onSelect = { period = it },
-                placeholder = "Select Period (1-9)",
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // 5. Batch & Unit Dropdowns (Side-by-side) — batch section includes Tutorial
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            AppDropdownField(
                 label = "Batch",
                 selectedValue = batchType,
                 options = listOf("Lecture", "Lab", "Tutorial"),
                 onSelect = { batchType = it },
                 placeholder = "Select Batch",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // 4. Period & Unit Dropdowns (Side-by-side) — Period paired with Unit
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AppDropdownField(
+                label = "Period",
+                selectedValue = period,
+                options = (1..9).map { "Period $it" },
+                onSelect = { period = it },
+                placeholder = "Select Period (1-9)",
                 modifier = Modifier.weight(1f)
             )
 
@@ -2141,48 +1989,7 @@ private fun TakeAttendanceSelectionView(
             )
         }
 
-        // 6. Date & Time (manually and by default current)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = dateTime,
-                onValueChange = { dateTime = it },
-                label = { Text("Date & Time") },
-                placeholder = { Text("YYYY-MM-DD HH:mm", color = textMuted) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = primaryBlue,
-                    unfocusedBorderColor = cardBorder,
-                    focusedTextColor = textPrimary,
-                    unfocusedTextColor = textPrimary,
-                    focusedContainerColor = cardBg,
-                    unfocusedContainerColor = cardBg
-                ),
-                modifier = Modifier.weight(1f)
-            )
-
-            Button(
-                onClick = {
-                    dateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = primaryBlueBg),
-                border = BorderStroke(1.dp, primaryBlue.copy(alpha = 0.5f)),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp)
-            ) {
-                Text(
-                    text = "Now",
-                    color = primaryBlue,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // 7. Topic Covered Dropdown (from syllabus)
+        // 5. Topic Covered Dropdown (from syllabus)
         val availableTopics = syllabusTopics[selectedUnit] ?: listOf("General Syllabus Topic")
         AppDropdownField(
             label = "Topic Covered",
@@ -2327,12 +2134,10 @@ private fun OlderSessionsView(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val sessionTitle = when {
-                                details.subjectName.isNotBlank() ->
-                                    "${details.subjectName} (${details.branch})"
-                                !details.courseProgram.isNullOrBlank() && details.courseProgram != "—" && !details.semester.isNullOrBlank() && details.semester != "—" ->
-                                    "${details.courseProgram} • ${details.semester}"
-                                !details.courseProgram.isNullOrBlank() && details.courseProgram != "—" ->
-                                    details.courseProgram
+                                details.courseProgram.isNotBlank() && details.branch.isNotBlank() && details.semester.isNotBlank() ->
+                                    "${details.courseProgram} (${details.branch}) • ${details.semester}"
+                                details.courseProgram.isNotBlank() && details.branch.isNotBlank() ->
+                                    "${details.courseProgram} (${details.branch})"
                                 !session.courseCode.isNullOrBlank() ->
                                     session.courseCode
                                 else ->
@@ -2349,7 +2154,7 @@ private fun OlderSessionsView(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "${details.courseProgram} • ${details.semester} • ${details.period} • ${details.batchType}",
+                                    text = "${details.batchType} • ${details.period} • ${details.classType}",
                                     fontSize = 11.sp,
                                     color = textSecondary,
                                     maxLines = 1,
@@ -2358,7 +2163,7 @@ private fun OlderSessionsView(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = formatSessionDate(session.startedAt ?: details.dateTime),
+                                text = formatSessionDate(session.startedAt),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = textSecondary,
@@ -2408,45 +2213,43 @@ private fun SessionDetailScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Row 1: Subject Name & Branch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SessionDetailPropertyField(label = "Subject", value = details.subjectName, modifier = Modifier.weight(2f))
-                    SessionDetailPropertyField(label = "Branch", value = details.branch, modifier = Modifier.weight(1f))
-                }
-
-                // Row 2: Course, Semester, Class Type
+                // Row 1: Course, Branch, Class Type
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SessionDetailPropertyField(label = "Course", value = details.courseProgram, modifier = Modifier.weight(1f))
-                    SessionDetailPropertyField(label = "Semester", value = details.semester, modifier = Modifier.weight(1f))
+                    SessionDetailPropertyField(label = "Branch", value = details.branch, modifier = Modifier.weight(1f))
                     SessionDetailPropertyField(label = "Class Type", value = details.classType, modifier = Modifier.weight(1f))
                 }
 
-                // Row 3: Batch, Period, Date & Time
+                // Row 2: Semester & Batch (interchanged: Semester paired with Batch)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    SessionDetailPropertyField(label = "Semester", value = details.semester, modifier = Modifier.weight(1f))
                     SessionDetailPropertyField(label = "Batch", value = details.batchType, modifier = Modifier.weight(1f))
-                    SessionDetailPropertyField(label = "Period", value = details.period, modifier = Modifier.weight(1f))
-                    SessionDetailPropertyField(label = "Date & Time", value = details.dateTime, modifier = Modifier.weight(1.4f))
                 }
 
-                // Row 4: Unit & Topic Covered
+                // Row 3: Period & Unit (interchanged: Period paired with Unit)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    SessionDetailPropertyField(label = "Period", value = details.period, modifier = Modifier.weight(1f))
                     SessionDetailPropertyField(label = "Unit", value = details.unit, modifier = Modifier.weight(1f))
+                }
+
+                // Row 4: Topic Covered
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     SessionDetailPropertyField(
                         label = "Topic Covered",
                         value = details.topicCovered,
-                        modifier = Modifier.weight(2.5f),
+                        modifier = Modifier.fillMaxWidth(),
                         allowMultiLine = true,
                         maxLines = 2
                     )
@@ -2643,10 +2446,8 @@ private data class SessionAcademicDetails(
     val courseProgram: String,
     val branch: String,
     val semester: String,
-    val subjectName: String,
     val batchType: String,
     val period: String,
-    val dateTime: String,
     val unit: String,
     val topicCovered: String
 )
@@ -2683,17 +2484,6 @@ private fun getSessionAcademicDetails(session: AttendanceSessionResponse): Sessi
         ?: Regex("Period\\s*[1-9]", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value
         ?: "Period 1")
 
-    val subj = session.subjectName ?: run {
-        val raw = session.courseName ?: ""
-        if (raw.contains("(")) raw.substringBefore("(").trim()
-        else if (raw.isNotBlank()) raw
-        else "Computer Networks"
-    }
-
-    val dt = session.dateTime
-        ?: session.startedAt?.let { formatSessionDate(it) }
-        ?: "Now"
-
     val unit = session.unit
         ?: Regex("Unit\\s*\\d", RegexOption.IGNORE_CASE).find(session.courseName ?: "")?.value
         ?: "Unit 1"
@@ -2711,13 +2501,11 @@ private fun getSessionAcademicDetails(session: AttendanceSessionResponse): Sessi
 
     return SessionAcademicDetails(
         classType = clsType,
-        courseProgram = courseProg ?: "B-Tech",
+        courseProgram = courseProg,
         branch = branch,
-        semester = sem ?: "Semester 1",
-        subjectName = subj,
+        semester = sem,
         batchType = batch,
         period = per,
-        dateTime = dt,
         unit = unit,
         topicCovered = topic
     )

@@ -105,11 +105,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     var isLoadingCourses by mutableStateOf(false)
 
     // Academic session parameters
-    var selectedSubjectName by mutableStateOf("Computer Networks")
     var selectedBranch by mutableStateOf("CSE")
     var selectedBatchType by mutableStateOf("Lecture")
     var selectedPeriod by mutableIntStateOf(1)
-    var selectedDateTime by mutableStateOf("")
 
     // BLE session state
     var isSessionActive by mutableStateOf(false)
@@ -600,23 +598,17 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     fun startTeacherSession(
         durationSeconds: Int = 60,
         courseId: String? = null,
-        subjectName: String? = null,
         branch: String? = null,
         batchType: String? = null,
-        period: Int? = null,
-        dateTime: String? = null
+        period: Int? = null
     ) {
-        if (subjectName != null) selectedSubjectName = subjectName
         if (branch != null) selectedBranch = branch
         if (batchType != null) selectedBatchType = batchType
         if (period != null) selectedPeriod = period
-        if (dateTime != null) selectedDateTime = dateTime
 
-        val activeSubject = selectedSubjectName
         val activeBranch = selectedBranch
         val activeBatch = selectedBatchType
         val activePeriod = selectedPeriod
-        val activeDateTime = selectedDateTime
 
         val targetCourseId = courseId ?: selectedCourse?.id
         backendSessionId = null
@@ -641,11 +633,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         sessionSalt = sessionSalt,
                         courseCode = selectedCourse?.courseCode,
                         courseName = selectedCourse?.courseName,
-                        subjectName = activeSubject,
                         branch = activeBranch,
                         batchType = activeBatch,
-                        period = activePeriod,
-                        dateTime = activeDateTime.ifBlank { null }
+                        period = activePeriod
                     )
                     val res = api.createSession(req)
                     withContext(Dispatchers.Main) {
@@ -730,7 +720,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun recordSessionToHistory(records: List<AttendanceRecordItem>) {
         val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-        val sessionTime = selectedDateTime.ifBlank { timestamp }
         val completedSession = AttendanceSessionResponse(
             id = backendSessionId ?: sessionId,
             courseId = selectedCourse?.id ?: "",
@@ -738,15 +727,14 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             status = "COMPLETED",
             totalVerified = records.count { it.status == "VERIFIED_PRESENT" },
             totalSpoofers = records.count { it.status == "SPOOFER_REJECTED" },
-            startedAt = sessionTime,
+            startedAt = timestamp,
             records = records,
             courseCode = selectedCourse?.courseCode ?: "",
             courseName = selectedCourse?.courseName ?: "",
-            subjectName = selectedSubjectName,
             branch = selectedBranch,
             batchType = selectedBatchType,
             period = selectedPeriod,
-            dateTime = sessionTime
+            dateTime = timestamp
         )
         pastSessions = listOf(completedSession) + pastSessions.filter { it.id != completedSession.id }
     }

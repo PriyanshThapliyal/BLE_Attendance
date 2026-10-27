@@ -575,5 +575,26 @@ async def test_session_create_with_academic_fields():
         assert data["date_time"] is not None
         assert "2026-10-28" in data["date_time"]
 
+        # Also create session without subject and date (defaults current time, no subject)
+        res_no_subj = await client.post(
+            "/api/v1/attendance/sessions",
+            headers=headers,
+            json={
+                "session_token": "TUT2",
+                "session_salt": "SALT",
+                "total_enrolled": 25,
+                "branch": "ECE",
+                "batch_type": "Tutorial",
+                "period": 5,
+            },
+        )
+        assert res_no_subj.status_code == 201
+        data_no_subj = res_no_subj.json()
+        assert data_no_subj["branch"] == "ECE"
+        assert data_no_subj["batch_type"] == "Tutorial"
+        assert data_no_subj["period"] == 5
+        assert data_no_subj["subject_name"] is None
+        assert data_no_subj["date_time"] is not None
+
 
 
