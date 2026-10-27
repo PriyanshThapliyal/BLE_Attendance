@@ -51,7 +51,8 @@ enum class StudentPhase {
     LISTENING_FOR_TEACHER,
     PROBING_NEIGHBORS,
     DISCOVERY_COMPLETE,
-    VERIFIED_PRESENT
+    VERIFIED_PRESENT,
+    UNVERIFIED_FLAGGED
 }
 
 enum class TeacherViewMode {
@@ -155,7 +156,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private var studentTimer: CountDownTimer? = null
 
     init {
-        currentRollNumber = prefs.getString("roll_number", defaultLocalId) ?: defaultLocalId
+        SessionManager.default.init(application.applicationContext)
+        currentRollNumber = SessionManager.default.currentUser?.rollNumber
+            ?: prefs.getString("roll_number", defaultLocalId)
+            ?: defaultLocalId
         val savedUrl = prefs.getString("server_url", null)
         if (!savedUrl.isNullOrBlank() && !savedUrl.contains("10.0.2.2")) {
             AttendanceApiClient.baseUrl = savedUrl
@@ -177,13 +181,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * SessionManager is in-memory by design (see :core:network). Until :app
-     * gets its own persistence layer, this pref-backed mirror restores the
-     * last login across process restarts. Runs only when no session is
-     * active, so mock shells / account switching are never overwritten.
+     * SessionManager is now backed by persistent SharedPreferences.
+     * This fallback ensures legacy pref entries are migrated if SessionManager
+     * has not yet been initialized with an active session.
      */
     private fun hydrateSessionFromPrefs() {
-        if (SessionManager.default.isLoggedIn) return
+        if (SessionManager.default.isLoggedIn) {
+            SessionManager.default.currentUser?.rollNumber?.let { currentRollNumber = it }
+            return
+        }
         val token = prefs.getString("auth_token", null) ?: return
         val role = Role.fromBackendName(prefs.getString("user_role", null)) ?: Role.STUDENT
         val roll = prefs.getString("roll_number", null)
@@ -192,7 +198,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 id = roll ?: "legacy-user",
                 name = prefs.getString("user_name", "User") ?: "User",
                 email = "",
-                roles = setOf(role)
+                roles = setOf(role),
+                rollNumber = roll
             ),
             token = token
         )
@@ -305,13 +312,19 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
      */
     private fun onAuthenticated(body: TokenResponse) {
         val role = Role.fromBackendName(body.user.role) ?: Role.STUDENT
+        val authenticatedUser = User(
+            id = body.user.id,
+            name = body.user.name,
+            email = body.user.email,
+            roles = setOf(role),
+            rollNumber = body.user.rollNumber,
+            department = body.user.department,
+            program = body.user.program,
+            semester = body.user.semester,
+            section = body.user.section
+        )
         SessionManager.default.startSession(
-            user = User(
-                id = body.user.id,
-                name = body.user.name,
-                email = body.user.email,
-                roles = setOf(role)
-            ),
+            user = authenticatedUser,
             token = body.accessToken
         )
         body.user.rollNumber?.let { currentRollNumber = it }
@@ -519,7 +532,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 val res = api.submitNeighbors(sessId, req)
                 withContext(Dispatchers.Main) {
                     if (res.isSuccessful) {
-                        studentPhase = StudentPhase.VERIFIED_PRESENT
+                        if (studentDiscoverySecondsRemaining == 0) {
+                            studentPhase = if (topDeskNeighbours.isNotEmpty()) {
+                                StudentPhase.VERIFIED_PRESENT
+                            } else {
+                                StudentPhase.UNVERIFIED_FLAGGED
+                            }
+                        }
                         if (!keepRadioActive) {
                             onStopScanning?.invoke()
                             onStopBroadcasting?.invoke()
@@ -535,7 +554,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     } else {
                         // Offline or non-200: fallback to local discovery complete
                         // Student is verified via pure in-degree graph witnessing from online classmates
-                        studentPhase = StudentPhase.DISCOVERY_COMPLETE
+                        if (studentDiscoverySecondsRemaining == 0) {
+                            studentPhase = if (topDeskNeighbours.isNotEmpty()) {
+                                StudentPhase.VERIFIED_PRESENT
+                            } else {
+                                StudentPhase.UNVERIFIED_FLAGGED
+                            }
+                        }
                         if (!keepRadioActive) {
                             onStopScanning?.invoke()
                             onStopBroadcasting?.invoke()
@@ -547,7 +572,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 withContext(Dispatchers.Main) {
                     // Offline fallback: BLE discovery was complete, near-field whisper was emitted.
                     // Student will be verified via pure in-degree graph witnessing from online desk neighbors.
-                    studentPhase = StudentPhase.DISCOVERY_COMPLETE
+                    if (studentDiscoverySecondsRemaining == 0) {
+                        studentPhase = if (topDeskNeighbours.isNotEmpty()) {
+                            StudentPhase.VERIFIED_PRESENT
+                        } else {
+                            StudentPhase.UNVERIFIED_FLAGGED
+                        }
+                    }
                     if (!keepRadioActive) {
                         onStopScanning?.invoke()
                         onStopBroadcasting?.invoke()
@@ -748,19 +779,17 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun startStudentDiscoveryWindow() {
-        studentDiscoverySecondsRemaining = 60
+        studentDiscoverySecondsRemaining = 15
         val probePayload = "$detectedSessionId$studentShortId"
         onStartBroadcasting?.invoke(probePayload, AdvertiseSettings.ADVERTISE_TX_POWER_LOW)
 
         studentTimer?.cancel()
-        studentTimer = object : CountDownTimer(60000L, 1000L) {
+        studentTimer = object : CountDownTimer(15000L, 1000L) {
             override fun onTick(millisUntilFinished: Long) {
                 studentDiscoverySecondsRemaining = (millisUntilFinished / 1000L).toInt()
-                val elapsed = 60 - studentDiscoverySecondsRemaining
+                val elapsed = 15 - studentDiscoverySecondsRemaining
                 // Initial quick cloud check-in after 3 seconds so the server records this student in the session
-                if (elapsed == 3) {
-                    submitMyNeighborsToCloud(keepRadioActive = true)
-                } else if (elapsed > 3 && elapsed % 5 == 0 && topDeskNeighbours.isNotEmpty()) {
+                if (elapsed == 3 || (elapsed > 3 && elapsed % 4 == 0 && topDeskNeighbours.isNotEmpty())) {
                     submitMyNeighborsToCloud(keepRadioActive = true)
                 }
             }
@@ -768,7 +797,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             override fun onFinish() {
                 studentDiscoverySecondsRemaining = 0
                 // Final upload of all discovered neighbors
-                submitMyNeighborsToCloud(keepRadioActive = false)
+                studentPhase = if (topDeskNeighbours.isNotEmpty()) {
+                    StudentPhase.VERIFIED_PRESENT
+                } else {
+                    StudentPhase.UNVERIFIED_FLAGGED
+                }
+                submitMyNeighborsToCloud(keepRadioActive = true)
             }
         }.start()
     }
@@ -798,7 +832,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 && !cleanMsg.startsWith("S:") && !cleanMsg.startsWith("SESSION:")
         val canReceiveProbe = studentPhase == StudentPhase.PROBING_NEIGHBORS ||
                 studentPhase == StudentPhase.VERIFIED_PRESENT ||
-                studentPhase == StudentPhase.DISCOVERY_COMPLETE
+                studentPhase == StudentPhase.DISCOVERY_COMPLETE ||
+                studentPhase == StudentPhase.UNVERIFIED_FLAGGED
 
         if (isPeerProbe && canReceiveProbe && detectedSessionId != "----") {
             // Drop packet if it came from another classroom
@@ -813,6 +848,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         val newPeer = PeerData(peerId)
                         newPeer.rssiSamples.add(rssi)
                         discoveredPeers[peerId] = newPeer
+                        // If previously flagged unverified, promote immediately upon discovering a neighbor!
+                        if (studentPhase == StudentPhase.UNVERIFIED_FLAGGED) {
+                            studentPhase = StudentPhase.VERIFIED_PRESENT
+                        }
                         // Immediately sync updated neighbor list to cloud
                         submitMyNeighborsToCloud(keepRadioActive = true)
                     }
