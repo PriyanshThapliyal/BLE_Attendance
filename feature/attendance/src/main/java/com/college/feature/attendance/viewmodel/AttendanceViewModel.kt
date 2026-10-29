@@ -633,7 +633,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         sessionSalt = sessionSalt,
                         courseCode = selectedCourse?.courseCode,
                         courseName = selectedCourse?.courseName,
-                        branch = activeBranch,
+                        branch = activeBranch.ifBlank { null },
                         batchType = activeBatch,
                         period = activePeriod
                     )
@@ -731,7 +731,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             records = records,
             courseCode = selectedCourse?.courseCode ?: "",
             courseName = selectedCourse?.courseName ?: "",
-            branch = selectedBranch,
+            branch = selectedBranch.ifBlank { null },
             batchType = selectedBatchType,
             period = selectedPeriod,
             dateTime = timestamp

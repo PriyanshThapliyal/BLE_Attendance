@@ -596,5 +596,24 @@ async def test_session_create_with_academic_fields():
         assert data_no_subj["subject_name"] is None
         assert data_no_subj["date_time"] is not None
 
+        # Also create BCA session without branch
+        res_bca = await client.post(
+            "/api/v1/attendance/sessions",
+            headers=headers,
+            json={
+                "session_token": "BCA1",
+                "session_salt": "SALT",
+                "total_enrolled": 40,
+                "course_code": "BCA Semester 1 • P2",
+                "course_name": "Regular Lecture (Unit 1)",
+                "batch_type": "Lecture",
+                "period": 2,
+            },
+        )
+        assert res_bca.status_code == 201
+        data_bca = res_bca.json()
+        assert data_bca["branch"] is None
+        assert data_bca["course_code"] == "BCA SEMESTER 1 • P2"
+
 
 

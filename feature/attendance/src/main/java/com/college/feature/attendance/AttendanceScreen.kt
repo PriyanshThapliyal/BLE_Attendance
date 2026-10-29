@@ -1876,13 +1876,18 @@ private fun TakeAttendanceSelectionView(
     var selectedUnit by remember { mutableStateOf("Unit 1") }
     var topicCovered by remember { mutableStateOf("Foundations & System Architecture") }
 
+    val isBranchApplicable = courseProgram != "BCA"
+
     LaunchedEffect(classType, courseProgram, branch, semester, batchType, period, selectedUnit, topicCovered) {
         val topicSuffix = if (topicCovered.isNotBlank()) " • $topicCovered" else ""
         val periodNum = period.replace("Period ", "").trim().toIntOrNull() ?: 1
-        val code = "$courseProgram ($branch) $semester • P$periodNum"
+        val effectiveBranch = if (isBranchApplicable) branch else ""
+        val branchPrefix = if (effectiveBranch.isNotBlank()) " ($effectiveBranch)" else ""
+        val code = "$courseProgram$branchPrefix $semester • P$periodNum"
         val name = "$classType $batchType ($selectedUnit$topicSuffix)"
+        val branchKey = if (effectiveBranch.isNotBlank()) "-${effectiveBranch.lowercase()}" else ""
         val stableCourseId = java.util.UUID.nameUUIDFromBytes(
-            "academic-${courseProgram.lowercase()}-${branch.lowercase()}-${semester.replace(" ", "").lowercase()}".toByteArray()
+            "academic-${courseProgram.lowercase()}$branchKey-${semester.replace(" ", "").lowercase()}".toByteArray()
         ).toString()
         onSelectCourse(
             CourseResponse(
@@ -1892,7 +1897,7 @@ private fun TakeAttendanceSelectionView(
             )
         )
         onAcademicDetailsChanged(
-            branch,
+            effectiveBranch,
             batchType,
             periodNum
         )
@@ -1914,27 +1919,38 @@ private fun TakeAttendanceSelectionView(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 2. Course Program & Branch Dropdowns (Side-by-side)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        // 2. Course Program & Branch Dropdowns (Branch only for non-BCA courses)
+        if (isBranchApplicable) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AppDropdownField(
+                    label = "Course",
+                    selectedValue = courseProgram,
+                    options = listOf("B-Tech", "BCA"),
+                    onSelect = { courseProgram = it },
+                    placeholder = "Select Course",
+                    modifier = Modifier.weight(1f)
+                )
+
+                AppDropdownField(
+                    label = "Branch",
+                    selectedValue = branch,
+                    options = listOf("CSE", "Mech", "ECE", "EE", "Civil"),
+                    onSelect = { branch = it },
+                    placeholder = "Select Branch",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        } else {
             AppDropdownField(
                 label = "Course",
                 selectedValue = courseProgram,
                 options = listOf("B-Tech", "BCA"),
                 onSelect = { courseProgram = it },
                 placeholder = "Select Course",
-                modifier = Modifier.weight(1f)
-            )
-
-            AppDropdownField(
-                label = "Branch",
-                selectedValue = branch,
-                options = listOf("CSE", "Mech", "ECE", "EE", "Civil"),
-                onSelect = { branch = it },
-                placeholder = "Select Branch",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -2138,6 +2154,10 @@ private fun OlderSessionsView(
                                     "${details.courseProgram} (${details.branch}) • ${details.semester}"
                                 details.courseProgram.isNotBlank() && details.branch.isNotBlank() ->
                                     "${details.courseProgram} (${details.branch})"
+                                details.courseProgram.isNotBlank() && details.semester.isNotBlank() ->
+                                    "${details.courseProgram} • ${details.semester}"
+                                details.courseProgram.isNotBlank() ->
+                                    details.courseProgram
                                 !session.courseCode.isNullOrBlank() ->
                                     session.courseCode
                                 else ->
@@ -2213,13 +2233,15 @@ private fun SessionDetailScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Row 1: Course, Branch, Class Type
+                // Row 1: Course, Branch (if applicable), Class Type
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SessionDetailPropertyField(label = "Course", value = details.courseProgram, modifier = Modifier.weight(1f))
-                    SessionDetailPropertyField(label = "Branch", value = details.branch, modifier = Modifier.weight(1f))
+                    if (details.branch.isNotBlank()) {
+                        SessionDetailPropertyField(label = "Branch", value = details.branch, modifier = Modifier.weight(1f))
+                    }
                     SessionDetailPropertyField(label = "Class Type", value = details.classType, modifier = Modifier.weight(1f))
                 }
 
@@ -2453,14 +2475,17 @@ private data class SessionAcademicDetails(
 )
 
 private fun getSessionAcademicDetails(session: AttendanceSessionResponse): SessionAcademicDetails {
-    val branch = session.branch
-        ?: Regex("\\b(CSE|Mech|ECE|EE|Civil)\\b", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value?.uppercase()
-        ?: "CSE"
-
     val courseProg = session.courseProgram
         ?: if (session.courseCode?.contains("BCA", ignoreCase = true) == true) "BCA"
         else if (session.courseCode?.contains("B-Tech", ignoreCase = true) == true || session.courseCode?.contains("BTECH", ignoreCase = true) == true) "B-Tech"
         else session.courseCode?.takeIf { it.isNotBlank() } ?: "B-Tech"
+
+    val isBca = courseProg.equals("BCA", ignoreCase = true)
+
+    val branch = if (isBca) ""
+        else session.branch
+        ?: Regex("\\b(CSE|Mech|ECE|EE|Civil)\\b", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value?.uppercase()
+        ?: "CSE"
 
     val sem = session.semester
         ?: Regex("Semester\\s*\\d", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value
