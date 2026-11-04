@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -1740,7 +1741,8 @@ private fun AppDropdownField(
     options: List<String>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "Select $label"
+    placeholder: String = "Select $label",
+    maxDropdownHeight: Dp? = 240.dp
 ) {
     var expanded by remember { mutableStateOf(false) }
     var anchorWidthPx by remember { mutableIntStateOf(0) }
@@ -1795,10 +1797,9 @@ private fun AppDropdownField(
                         popupContentSize: IntSize
                     ): IntOffset {
                         val offsetDown = with(density) { 4.dp.roundToPx() }
-                        return IntOffset(
-                            x = anchorBounds.left,
-                            y = anchorBounds.bottom + offsetDown
-                        )
+                        val x = anchorBounds.left.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0))
+                        val y = anchorBounds.bottom + offsetDown
+                        return IntOffset(x, y)
                     }
                 }
             }
@@ -1823,7 +1824,13 @@ private fun AppDropdownField(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 240.dp)
+                            .then(
+                                if (maxDropdownHeight != null) {
+                                    Modifier.heightIn(max = maxDropdownHeight)
+                                } else {
+                                    Modifier
+                                }
+                            )
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 4.dp)
                     ) {
@@ -1840,7 +1847,7 @@ private fun AppDropdownField(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
@@ -1877,6 +1884,15 @@ private fun TakeAttendanceSelectionView(
     var topicCovered by remember { mutableStateOf("Foundations & System Architecture") }
 
     val isBranchApplicable = courseProgram != "BCA"
+    val maxSemesters = if (courseProgram == "BCA") 6 else 8
+    val semesterOptions = (1..maxSemesters).map { "Semester $it" }
+
+    LaunchedEffect(courseProgram) {
+        val semNum = semester.replace("Semester ", "").trim().toIntOrNull() ?: 1
+        if (semNum > maxSemesters) {
+            semester = "Semester 1"
+        }
+    }
 
     LaunchedEffect(classType, courseProgram, branch, semester, batchType, period, selectedUnit, topicCovered) {
         val topicSuffix = if (topicCovered.isNotBlank()) " • $topicCovered" else ""
@@ -1929,7 +1945,15 @@ private fun TakeAttendanceSelectionView(
                     label = "Course",
                     selectedValue = courseProgram,
                     options = listOf("B-Tech", "BCA"),
-                    onSelect = { courseProgram = it },
+                    onSelect = {
+                        courseProgram = it
+                        if (it == "BCA") {
+                            val semNum = semester.replace("Semester ", "").trim().toIntOrNull() ?: 1
+                            if (semNum > 6) {
+                                semester = "Semester 1"
+                            }
+                        }
+                    },
                     placeholder = "Select Course",
                     modifier = Modifier.weight(1f)
                 )
@@ -1948,7 +1972,15 @@ private fun TakeAttendanceSelectionView(
                 label = "Course",
                 selectedValue = courseProgram,
                 options = listOf("B-Tech", "BCA"),
-                onSelect = { courseProgram = it },
+                onSelect = {
+                    courseProgram = it
+                    if (it == "BCA") {
+                        val semNum = semester.replace("Semester ", "").trim().toIntOrNull() ?: 1
+                        if (semNum > 6) {
+                            semester = "Semester 1"
+                        }
+                    }
+                },
                 placeholder = "Select Course",
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1962,10 +1994,11 @@ private fun TakeAttendanceSelectionView(
             AppDropdownField(
                 label = "Semester",
                 selectedValue = semester,
-                options = (1..8).map { "Semester $it" },
+                options = semesterOptions,
                 onSelect = { semester = it },
                 placeholder = "Select Semester",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                maxDropdownHeight = null
             )
 
             AppDropdownField(
