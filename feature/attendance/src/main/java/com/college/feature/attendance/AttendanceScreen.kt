@@ -409,7 +409,7 @@ private fun StudentSection(
                 }
             }
 
-            // Clean Class Session Pill (non-technical)
+            // Class session pill
             if (detectedSessionId.isNotEmpty() && detectedSessionId != "None" && detectedSessionId != "----") {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -427,7 +427,7 @@ private fun StudentSection(
             }
         }
 
-        // Live Scanning Progress Bar (Discovery window active)
+        // Live scanning progress bar
         if (studentPhase == StudentPhase.PROBING_NEIGHBORS) {
             Surface(
                 shape = RoundedCornerShape(10.dp),
@@ -539,7 +539,7 @@ private fun StudentSection(
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // PRECISION CYBER EMERALD RADAR VIEWPORT (SHIFTED UP)
+        // PRECISION CYBER EMERALD RADAR VIEWPORT
         // ─────────────────────────────────────────────────────────────────────
         BoxWithConstraints(
             modifier = Modifier
@@ -1131,7 +1131,7 @@ private fun TeacherSection(
                         }
                     }
 
-                    // 3 Metric Stat Cards in one row (Centered texts)
+                    // Metric stat cards
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1232,7 +1232,7 @@ private fun TeacherSection(
                 }
             }
 
-            // Attendance list strictly sorted in ascending order by student roll number
+            // Student attendance list sorted by roll number
             val sortedList = finalizedRecords.sortedWith { r1, r2 ->
                 compareRollNumbers(getDisplayRollNo(r1), getDisplayRollNo(r2))
             }
@@ -1366,7 +1366,7 @@ private fun TeacherSection(
         }
     } else if (isSessionActive) {
         // ==========================================
-        // COOL LOADING SCREEN (ACTIVE 60s BROADCAST)
+        // ACTIVE BROADCAST SCREEN
         // ==========================================
         Column(
             modifier = Modifier
@@ -1413,7 +1413,7 @@ private fun TeacherSection(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // High-Tech Pulsing Radar Aura & Circular Progress Countdown (lifted up directly under pill)
+            // Pulsing radar aura and circular progress countdown
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1578,7 +1578,7 @@ private fun TeacherSection(
         when (teacherViewMode) {
             TeacherViewMode.MENU -> {
                 // ==========================================
-                // TEACHER OPTIONS HUB (HOMESCREEN-LIKE WINDOW)
+                // TEACHER OPTIONS HUB
                 // ==========================================
                 Column(
                     modifier = Modifier
@@ -1598,7 +1598,7 @@ private fun TeacherSection(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // 1. Take Attendance
+                        // Take Attendance option
                         Surface(
                             onClick = { onSetTeacherViewMode(TeacherViewMode.TAKE_ATTENDANCE) },
                             shape = RoundedCornerShape(16.dp),
@@ -1635,7 +1635,7 @@ private fun TeacherSection(
                             }
                         }
 
-                        // 2. Older Sessions
+                        // Older Sessions option
                         Surface(
                             onClick = {
                                 onLoadHistory()
@@ -1680,7 +1680,7 @@ private fun TeacherSection(
 
             TeacherViewMode.TAKE_ATTENDANCE -> {
                 // ==========================================
-                // TAKE ATTENDANCE (ACADEMIC SELECTION WINDOW)
+                // TAKE ATTENDANCE SELECTION
                 // ==========================================
                 TakeAttendanceSelectionView(
                     onStartSession = onStartSession,
@@ -1909,7 +1909,7 @@ private fun TakeAttendanceSelectionView(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Class Type Dropdown
+        // Class type dropdown
         AppDropdownField(
             label = "Class Type",
             selectedValue = classType,
@@ -1919,7 +1919,7 @@ private fun TakeAttendanceSelectionView(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // 2. Course Program & Branch Dropdowns (Branch only for non-BCA courses)
+        // Course program and branch dropdowns
         if (isBranchApplicable) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1954,7 +1954,7 @@ private fun TakeAttendanceSelectionView(
             )
         }
 
-        // 3. Semester & Batch Dropdowns (Side-by-side) — Batch paired with Semester
+        // Semester and batch dropdowns
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1978,7 +1978,7 @@ private fun TakeAttendanceSelectionView(
             )
         }
 
-        // 4. Period & Unit Dropdowns (Side-by-side) — Period paired with Unit
+        // Period and unit dropdowns
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -2005,7 +2005,7 @@ private fun TakeAttendanceSelectionView(
             )
         }
 
-        // 5. Topic Covered Dropdown (from syllabus)
+        // Topic covered dropdown
         val availableTopics = syllabusTopics[selectedUnit] ?: listOf("General Syllabus Topic")
         AppDropdownField(
             label = "Topic Covered",
@@ -2220,7 +2220,7 @@ private fun SessionDetailScreen(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Session Details Card (clean details card, top bar handled by main Scaffold)
+        // Session details card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
@@ -2233,7 +2233,7 @@ private fun SessionDetailScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Row 1: Course, Branch (if applicable), Class Type
+                // Row 1: Course, branch, and class type
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2245,7 +2245,7 @@ private fun SessionDetailScreen(
                     SessionDetailPropertyField(label = "Class Type", value = details.classType, modifier = Modifier.weight(1f))
                 }
 
-                // Row 2: Semester & Batch (interchanged: Semester paired with Batch)
+                // Row 2: Semester and batch
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2254,7 +2254,7 @@ private fun SessionDetailScreen(
                     SessionDetailPropertyField(label = "Batch", value = details.batchType, modifier = Modifier.weight(1f))
                 }
 
-                // Row 3: Period & Unit (interchanged: Period paired with Unit)
+                // Row 3: Period and unit
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2343,7 +2343,7 @@ private fun SessionDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Circle in front of name: last two digits of roll number (01, 02, 03..)
+                            // Roll number badge
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
@@ -2360,7 +2360,7 @@ private fun SessionDetailScreen(
                                 )
                             }
 
-                            // Student name only (no roll number underneath)
+                            // Student name
                             Text(
                                 text = studentName,
                                 fontSize = 14.sp,
@@ -2463,6 +2463,13 @@ private fun MetricStatMiniCard(
     }
 }
 
+private val BRANCH_REGEX = Regex("\\b(CSE|Mech|ECE|EE|Civil)\\b", RegexOption.IGNORE_CASE)
+private val SEMESTER_REGEX = Regex("Semester\\s*\\d", RegexOption.IGNORE_CASE)
+private val SEM_REGEX = Regex("Sem\\s*\\d", RegexOption.IGNORE_CASE)
+private val PERIOD_P_REGEX = Regex("P[1-9]", RegexOption.IGNORE_CASE)
+private val PERIOD_WORD_REGEX = Regex("Period\\s*[1-9]", RegexOption.IGNORE_CASE)
+private val UNIT_REGEX = Regex("Unit\\s*\\d", RegexOption.IGNORE_CASE)
+
 private data class SessionAcademicDetails(
     val classType: String,
     val courseProgram: String,
@@ -2477,20 +2484,19 @@ private data class SessionAcademicDetails(
 private fun getSessionAcademicDetails(session: AttendanceSessionResponse): SessionAcademicDetails {
     val courseProg = session.courseProgram
         ?: if (session.courseCode?.contains("BCA", ignoreCase = true) == true) "BCA"
-        else if (session.courseCode?.contains("B-Tech", ignoreCase = true) == true || session.courseCode?.contains("BTECH", ignoreCase = true) == true) "B-Tech"
-        else session.courseCode?.takeIf { it.isNotBlank() } ?: "B-Tech"
+        else "B-Tech"
 
     val isBca = courseProg.equals("BCA", ignoreCase = true)
 
     val branch = if (isBca) ""
         else session.branch
-        ?: Regex("\\b(CSE|Mech|ECE|EE|Civil)\\b", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value?.uppercase()
+        ?: BRANCH_REGEX.find(session.courseCode ?: "")?.value?.uppercase()
         ?: "CSE"
 
     val sem = session.semester
-        ?: Regex("Semester\\s*\\d", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value
-        ?: Regex("Sem\\s*\\d", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value
-        ?: if (session.courseCode?.isNotBlank() == true) session.courseCode else "Semester 1"
+        ?: SEMESTER_REGEX.find(session.courseCode ?: "")?.value
+        ?: SEM_REGEX.find(session.courseCode ?: "")?.value
+        ?: "Semester 1"
 
     val clsType = session.classType ?: when {
         session.courseName?.contains("Extra", ignoreCase = true) == true -> "Extra"
@@ -2505,12 +2511,12 @@ private fun getSessionAcademicDetails(session: AttendanceSessionResponse): Sessi
     }
 
     val per = if (session.period != null) "Period ${session.period}"
-        else (Regex("P[1-9]", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value?.replace("P", "Period ")
-        ?: Regex("Period\\s*[1-9]", RegexOption.IGNORE_CASE).find(session.courseCode ?: "")?.value
+        else (PERIOD_P_REGEX.find(session.courseCode ?: "")?.value?.replace("P", "Period ")
+        ?: PERIOD_WORD_REGEX.find(session.courseCode ?: "")?.value
         ?: "Period 1")
 
     val unit = session.unit
-        ?: Regex("Unit\\s*\\d", RegexOption.IGNORE_CASE).find(session.courseName ?: "")?.value
+        ?: UNIT_REGEX.find(session.courseName ?: "")?.value
         ?: "Unit 1"
 
     val topic = session.topicCovered ?: run {

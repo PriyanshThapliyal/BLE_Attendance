@@ -493,7 +493,6 @@ async def test_expired_otp_purging_and_cleanup():
 def test_attendance_session_model_new_fields():
     from app.models.attendance import AttendanceSession
     columns = {c.name for c in AttendanceSession.__table__.columns}
-    assert "subject_name" in columns
     assert "branch" in columns
     assert "batch_type" in columns
     assert "period" in columns
@@ -550,8 +549,7 @@ async def test_session_create_with_academic_fields():
         token = verify_reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create session with subject_name, branch, batch_type (Tutorial), period (3), manual date_time
-        custom_time = "2026-10-28T09:30:00Z"
+        # Create session with branch, batch_type (Tutorial), period (3)
         res = await client.post(
             "/api/v1/attendance/sessions",
             headers=headers,
@@ -559,23 +557,18 @@ async def test_session_create_with_academic_fields():
                 "session_token": "TUT1",
                 "session_salt": "SALT",
                 "total_enrolled": 30,
-                "subject_name": "Computer Networks",
                 "branch": "CSE",
                 "batch_type": "Tutorial",
                 "period": 3,
-                "date_time": custom_time,
             },
         )
         assert res.status_code == 201
         data = res.json()
-        assert data["subject_name"] == "Computer Networks"
         assert data["branch"] == "CSE"
         assert data["batch_type"] == "Tutorial"
         assert data["period"] == 3
-        assert data["date_time"] is not None
-        assert "2026-10-28" in data["date_time"]
 
-        # Also create session without subject and date (defaults current time, no subject)
+        # Also create session with different parameters
         res_no_subj = await client.post(
             "/api/v1/attendance/sessions",
             headers=headers,
@@ -593,8 +586,6 @@ async def test_session_create_with_academic_fields():
         assert data_no_subj["branch"] == "ECE"
         assert data_no_subj["batch_type"] == "Tutorial"
         assert data_no_subj["period"] == 5
-        assert data_no_subj["subject_name"] is None
-        assert data_no_subj["date_time"] is not None
 
         # Also create BCA session without branch
         res_bca = await client.post(

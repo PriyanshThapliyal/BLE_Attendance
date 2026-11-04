@@ -597,15 +597,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     // Start teacher session and initialize backend record
     fun startTeacherSession(
         durationSeconds: Int = 60,
-        courseId: String? = null,
-        branch: String? = null,
-        batchType: String? = null,
-        period: Int? = null
+        courseId: String? = null
     ) {
-        if (branch != null) selectedBranch = branch
-        if (batchType != null) selectedBatchType = batchType
-        if (period != null) selectedPeriod = period
-
         val activeBranch = selectedBranch
         val activeBatch = selectedBatchType
         val activePeriod = selectedPeriod
@@ -733,8 +726,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             courseName = selectedCourse?.courseName ?: "",
             branch = selectedBranch.ifBlank { null },
             batchType = selectedBatchType,
-            period = selectedPeriod,
-            dateTime = timestamp
+            period = selectedPeriod
         )
         pastSessions = listOf(completedSession) + pastSessions.filter { it.id != completedSession.id }
     }
